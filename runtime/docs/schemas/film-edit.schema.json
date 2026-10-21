@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:walkthrough:input:film-edit:1",
+  "title": "Walkthrough film edit",
+  "description": "Input file for validate --edit or compose --edit. Pictures determine length; narration has independent output starts and may cross cuts. All times lie on the 60 fps frame grid. Optional timed emphasis identifies fixed observed subjects. Runtime validation additionally checks source integrity and ranges, unique IDs, chronological speech starts, settled holds, continuous cuts, framing, emphasis visibility and caption overlap. Actual audio determines speech overlap and fit; pictures are never extended automatically.",
+  "$comment": "Frame alignment uses abs(round(seconds * 60) - seconds * 60) <= 0.000001 and safe integer frame indices. It is intentionally not represented by an exact multipleOf constraint. Source/mark lookup, relative timing, rectangle sums, cumulative frame safety and audio fit require runtime validation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sourceSetId", "sourceSetSha256", "title", "brief", "voiceId", "pictures", "narration"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "sourceSetId": {"$ref": "#/$defs/id"},
+    "sourceSetSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "title": {"$ref": "#/$defs/canonicalText"},
+    "brief": {"$ref": "#/$defs/canonicalText"},
+    "voiceId": {"type":"string","pattern":"^[a-z0-9]+(?:[-_][a-z0-9]+)*$","description":"A reviewed provisioned voice ID."},
+    "language": {"enum":["English","Italian"],"description":"Explicit for new edits. Historical edits that omit this field retain English behavior without rewriting their bytes."},
+    "pictures": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/picture"}},
+    "narration": {"type": "array", "items": {"$ref": "#/$defs/narration"}, "description": "May be empty for a silent edit. Phrase starts must be chronological and actual speech must not overlap or extend beyond the pictures."}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$"},
+    "canonicalText": {"type": "string", "pattern": "^\\S(?:[\\s\\S]*\\S)?(?![\\s\\S])", "description": "Nonempty text without leading or trailing whitespace."},
+    "time": {"type": "number", "minimum": 0, "description": "Seconds on the 60 fps frame grid (frame / 60); runtime verifies alignment and safe frame range."},
+    "duration": {"type": "number", "exclusiveMinimum": 0, "description": "Positive seconds on the 60 fps frame grid; runtime verifies alignment and safe frame range."},
+    "zoom": {"type": "number", "minimum": 1, "maximum": 1.5},
+    "markTarget": {"type":"object","additionalProperties":false,"required":["markId"],"properties":{"markId":{"$ref":"#/$defs/id"}},"description":"Resolve the mark ID within this picture's source, offline. New captures preserve mark IDs through sealing; retained historical IDs remain unchanged. The mark must have a canonical source-pixel target."},
+    "box": {
+      "type": "object", "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {"type": "number", "minimum": 0},
+        "y": {"type": "number", "minimum": 0},
+        "width": {"type": "number", "exclusiveMinimum": 0},
+        "height": {"type": "number", "exclusiveMinimum": 0}
+      },
+      "description": "Subject in 3200 by 1800 master source pixels. Runtime verifies source bounds and full subject visibility at the selected framing."
+    },
+    "cameraBox": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {"type": "number"},
+        "y": {"type": "number"},
+        "width": {"type": "number", "exclusiveMinimum": 0},
+        "height": {"type": "number", "exclusiveMinimum": 0}
+      },
+      "description": "Ending subject in master source pixels. Runtime timeline validation rejects negative positions, out-of-source rectangles and hidden subjects."
+    },
+    "cameraMove": {
+      "type": "object",
+      "required": ["startSeconds", "durationSeconds", "zoom", "target"],
+      "properties": {
+        "startSeconds": {"$ref": "#/$defs/time", "description": "Start relative to this picture, not the source or output timeline."},
+        "durationSeconds": {"$ref": "#/$defs/duration"},
+        "zoom": {"$ref": "#/$defs/zoom"},
+        "target": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/cameraBox"}, {"$ref":"#/$defs/markTarget"}]}
+      },
+      "description": "Explicit camera move ending at this zoom and target. Runtime requires startSeconds + durationSeconds to stay inside the picture. A null target frames the source center."
+    },
+    "captionPlacement": {
+      "type": "object",
+      "required": ["x", "y", "width"],
+      "properties": {
+        "x": {"type": "number", "minimum": 0},
+        "y": {"type": "number", "minimum": 0, "maximum": 984},
+        "width": {"type": "number", "exclusiveMinimum": 0, "maximum": 1920}
+      },
+      "description": "Top-left and width in 1920 by 1080 output pixels. Runtime also requires x + width <= 1920; the two-line caption area occupies 96 pixels of height. Choose placement for this shot."
+    },
+    "emphasis": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "target", "startSeconds", "endSeconds"],
+      "properties": {
+        "id": {"$ref":"#/$defs/id", "description":"Unique within this picture."},
+        "kind": {"enum":["outline","spotlight"]},
+        "target": {"oneOf":[{"$ref":"#/$defs/box"},{"$ref":"#/$defs/markTarget"}]},
+        "startSeconds": {"$ref":"#/$defs/time", "description":"Inclusive picture-local start, not a source or output timestamp."},
+        "endSeconds": {"$ref":"#/$defs/duration", "description":"Exclusive picture-local end, greater than startSeconds and no later than the picture end."}
+      },
+      "description":"A fixed source-pixel subject or exact sealed mark, resolved offline. Smooth restrained entry/exit and output-sized stroke are built in. No tracking, labels or custom styling. The complete target must stay visible during the active interval and clear of actual captions. Outlines may compare subjects; at most one spotlight may be active at any frame."
+    },
+    "picture": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "sourceId", "kind", "transition", "startSeconds", "zoom", "target"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id", "description": "Unique within pictures."},
+        "sourceId": {"$ref": "#/$defs/id"},
+        "kind": {"enum": ["live", "hold"]},
+        "transition": {"enum": ["cut", "continuous"], "description": "continuous requires an immediately preceding contiguous range of the same source and unchanged boundary framing; the first picture uses cut."},
+        "startSeconds": {"$ref": "#/$defs/time", "description": "Start on the selected source clock, inside its usableRange."},
+        "endSeconds": {"$ref": "#/$defs/time", "description": "Exclusive live source end, greater than startSeconds. Live footage plays at 1x."},
+        "durationSeconds": {"$ref": "#/$defs/duration", "description": "Explicit output duration for a hold only."},
+        "settledObservationId": {"$ref": "#/$defs/id", "description": "For a hold only: a retained mark on the same source whose settled interval covers the selected frame."},
+        "zoom": {"$ref": "#/$defs/zoom"},
+        "target": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/box"}, {"$ref":"#/$defs/markTarget"}], "description": "Source-pixel subject or exact sealed mark reference; null uses the source center."},
+        "cameraMove": {"$ref": "#/$defs/cameraMove"},
+        "captionPlacement": {"$ref": "#/$defs/captionPlacement"},
+        "emphasis": {"type":"array","items":{"$ref":"#/$defs/emphasis"},"description":"Optional picture-local attention treatment. Omit when unnecessary; an empty array is valid."}
+      },
+      "oneOf": [
+        {
+          "properties": {"kind": {"const": "live"}},
+          "required": ["endSeconds"],
+          "not": {"anyOf": [{"required": ["durationSeconds"]}, {"required": ["settledObservationId"]}]}
+        },
+        {
+          "properties": {"kind": {"const": "hold"}},
+          "required": ["durationSeconds", "settledObservationId"],
+          "not": {"required": ["endSeconds"]}
+        }
+      ]
+    },
+    "narration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "text", "outputStartSeconds"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$", "description": "Unique within narration; at most 64 characters."},
+        "text": {"$ref": "#/$defs/canonicalText"},
+        "outputStartSeconds": {"$ref": "#/$defs/time", "description": "Independent output-clock start within the picture timeline. Speech may continue across cuts."}
+      }
+    }
+  }
+}

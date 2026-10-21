@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:walkthrough:input:capture-mark:1",
+  "title": "Walkthrough capture mark",
+  "description": "Input to capture mark --input <file> or --data <JSON>. --id names the stable operation; optional payload id names the retained mark. A target comes from the latest live observation of the selected capture page, with no intervening dispatched action or capture start/stop. Runtime checks observation identity, unchanged viewport and scrolling, visible geometry and screenshot bounds without supplying browser input. Targets do not track moving subjects or establish settlement.",
+  "type": "object", "additionalProperties": false,
+  "required": ["title"],
+  "properties": {
+    "id": {"$ref": "#/$defs/id", "description": "Optional distinct mark identity; omitted IDs are generated and returned."},
+    "title": {"type": "string", "pattern": "\\S", "maxLength": 10000},
+    "settled": {"type": "boolean", "description": "Request observation of unchanged actual pixels. This establishes neither application success nor whether a pending state may be held editorially."},
+    "target": {
+      "oneOf": [{"$ref": "#/$defs/referenceTarget"}, {"$ref": "#/$defs/screenshotTarget"}],
+      "description": "Choose an observed reference or a rectangle in that observation's native screenshot pixels. Omit when no particular subject needs framing. Reading a retained observation does not make it current again."
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,100}$"},
+    "referenceTarget": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observationId", "ref"],
+      "properties": {
+        "observationId": {"$ref": "#/$defs/id"},
+        "ref": {"$ref": "#/$defs/id"}
+      },
+      "description": "Use a ref from the named current observation. Runtime derives its observed CSS geometry and requires the exact element to remain wholly visible, unclipped and unmoved; marking never scrolls it into view."
+    },
+    "screenshotTarget": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observationId", "box", "coordinateSpace"],
+      "properties": {
+        "observationId": {"$ref": "#/$defs/id"},
+        "box": {"$ref": "#/$defs/box"},
+        "coordinateSpace": {"const": "screenshot"}
+      },
+      "description": "Requires a screenshot in the named current observation. box uses its screenshotPixels dimensions, not CSS or source pixels. Runtime requires x + width <= screenshotPixels.width and y + height <= screenshotPixels.height, then maps the rectangle into canonical source pixels."
+    },
+    "box": {
+      "type": "object", "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {"type": "number", "minimum": 0},
+        "y": {"type": "number", "minimum": 0},
+        "width": {"type": "number", "exclusiveMinimum": 0},
+        "height": {"type": "number", "exclusiveMinimum": 0}
+      }
+    }
+  }
+}

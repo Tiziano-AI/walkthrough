@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:walkthrough:input:capture-start:1",
+  "title": "Walkthrough capture start",
+  "description": "Optional input to capture start --input <file> or --data <JSON>. The stable operation ID belongs in --id, not this payload. With no input the title is Untitled take. capture stop takes no input payload.",
+  "type": "object",
+  "properties": {
+    "title": {"type": "string", "default": "Untitled take"}
+  }
+}

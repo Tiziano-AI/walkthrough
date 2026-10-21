@@ -1,0 +1,30 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "walkthrough",
+  "version": "0.4.0",
+  "description": "Create narrated walkthrough films from real web-product use, then revise retained footage. For Apple Silicon Macs; requires the separate Walkthrough CLI, Node 24, FFmpeg and local Voices. Setup explicitly acquires runtime dependencies and a browser; plugin installation starts no recording or inference. Removing the plugin preserves the CLI and projects.",
+  "author": { "name": "Tiziano AI", "url": "https://github.com/Tiziano-AI" },
+  "homepage": "https://github.com/Tiziano-AI/walkthrough",
+  "repository": "https://github.com/Tiziano-AI/walkthrough",
+  "license": "MIT",
+  "keywords": ["walkthrough", "product-video", "browser", "local", "authoring", "apple-silicon"],
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "Walkthrough",
+        "shortDescription": "Real product use. A film worth following.",
+        "longDescription": "Give your agent a web product, audience and intent. It explores real interactions, records them and delivers a narrated local film you can revise without repeating application work. Requires an Apple Silicon Mac, the separately installed Walkthrough CLI, Node 24, FFmpeg and local Voices with provisioned models and a saved narrator. Setup explicitly acquires pinned runtime dependencies and a browser; authoring performs no dependency downloads. Remotion and model terms apply separately. This plugin supplies guidance, not a hidden runtime: installation starts no browser, recording or inference. Disabling or removing it preserves the CLI, projects, profiles, voices and models; any active session remains under the independent CLI's inspect/close controls.",
+        "developerName": "Tiziano AI",
+        "category": "Productivity",
+        "websiteURL": "https://github.com/Tiziano-AI/walkthrough",
+        "composerIcon": "./skills/walkthrough/assets/walkthrough.svg",
+        "logo": "./.claude-plugin/icon.png",
+        "defaultPrompt": [
+          "Make a walkthrough film introducing this web product to the audience I describe.",
+          "Revise my retained walkthrough film's pacing and framing without reopening the product."
+        ]
+      }
+    }
+  }
+}

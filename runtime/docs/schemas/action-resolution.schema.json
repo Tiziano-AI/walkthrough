@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:walkthrough:input:action-resolution:1",
+  "title": "Walkthrough action resolution",
+  "description": "Input to action resolve --input <file> or --data <JSON>. The original action ID is supplied with --id, outside this object. Records observed evidence and author judgment separately from dispatch status; never resends input or establishes server idempotency.",
+  "type": "object",
+  "required": ["outcome", "note"],
+  "properties": {
+    "outcome": {"enum": ["effect-observed", "no-effect-observed", "uncertain"]},
+    "note": {"type": "string", "pattern": "\\S", "maxLength": 10000, "description": "The observed state and evidence supporting this outcome, including what remains unknown."}
+  }
+}

@@ -1,0 +1,8 @@
+interface:
+  display_name: "Walkthrough"
+  short_description: "Create and revise real web-product walkthrough films"
+  icon_small: "./assets/walkthrough.svg"
+  icon_large: "./assets/walkthrough.svg"
+  default_prompt: "Use $walkthrough to introduce this product through its main capabilities and real interactions, for the audience I describe."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,48 @@
+# macOS and editor state
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+/native/
+/runtime/native/
+coverage/
+__pycache__/
+.cache/
+.tmp/
+
+# Test and browser artifacts
+test-results/
+playwright-report/
+.playwright/
+*.har
+trace.zip
+
+# Walkthrough local data plane
+runs/
+captures/
+outputs/
+bundle/
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.wav
+*.aiff
+*.m4a
+*.mp3
+
+# Local Codex continuation state
+.cdx-continue/

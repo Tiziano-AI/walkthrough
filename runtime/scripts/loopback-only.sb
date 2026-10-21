@@ -1,0 +1,10 @@
+(version 1)
+(allow default)
+(deny network*)
+(allow network-inbound (local ip "localhost:*"))
+(allow network-outbound (remote ip "localhost:*"))
+(allow network-bind (local ip "localhost:*"))
+; Chromium's profile singleton uses a filesystem Unix socket, not TCP.
+(allow network-bind (local unix-socket (subpath "/")))
+(allow network-inbound (local unix-socket (subpath "/")))
+(allow network-outbound (remote unix-socket (subpath "/")))

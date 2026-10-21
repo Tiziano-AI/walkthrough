@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:walkthrough:input:session-action:1",
+  "title": "Walkthrough browser action",
+  "description": "The action object for act --input <file> or --data <JSON>, without an action wrapper. Its stable action identity belongs in --id. Targets come from a current observe result. Runtime additionally checks target freshness, page/frame identity, coordinate bounds, navigation scope and retained file custody; schema validity grants no authority for an effect.",
+  "oneOf": [
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "url"],
+      "properties": {
+        "kind": {"const": "navigate"},
+        "url": {"type": "string", "maxLength": 10000},
+        "pageId": {"type": "string"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "pageId"],
+      "properties": {
+        "kind": {"const": "select-page"},
+        "pageId": {"type": "string", "maxLength": 200}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "target"],
+      "properties": {
+        "kind": {"const": "click"},
+        "target": {"$ref": "#/$defs/target"},
+        "button": {"$ref": "#/$defs/button"},
+        "clickCount": {"type": "integer", "minimum": 1, "maximum": 3},
+        "modifiers": {"type": "array", "uniqueItems": true, "items": {"enum": ["Alt", "Control", "Meta", "Shift"]}},
+        "expectPrintPreview": {"$ref": "#/$defs/expectPrintPreview"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "target"],
+      "properties": {
+        "kind": {"const": "hover"},
+        "target": {"$ref": "#/$defs/target"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "target", "text"],
+      "properties": {
+        "kind": {"const": "text"},
+        "target": {"$ref": "#/$defs/target"},
+        "text": {"type": "string", "maxLength": 100000},
+        "mode": {"enum": ["type", "insert", "replace"]}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "keys"],
+      "properties": {
+        "kind": {"const": "keys"},
+        "target": {"$ref": "#/$defs/target"},
+        "keys": {"type": "string", "minLength": 1, "maxLength": 200},
+        "expectPrintPreview": {"$ref": "#/$defs/expectPrintPreview"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "pageId", "observationId", "filename"],
+      "properties": {
+        "kind": {"const": "save-print-preview"},
+        "pageId": {"$ref": "#/$defs/sessionId"},
+        "observationId": {"$ref": "#/$defs/sessionId"},
+        "filename": {"type": "string", "minLength": 1, "maxLength": 180, "pattern": "^(?!\\.)[^/\\\\\\u0000-\\u001F\\u007F]+\\.[pP][dD][fF](?![\\s\\S])"}
+      },
+      "description": "Retain the full PDF of the latest observed completed native print generation and browser-owned settings. Runtime verifies that generation before and after retrieval. Returns artifactId; does not click native Save, use an OS chooser, close the preview or open a viewer. Filename is a safe basename, not a destination path."
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "pageId"],
+      "properties": {
+        "kind": {"const": "close-print-preview"},
+        "pageId": {"$ref": "#/$defs/sessionId"}
+      },
+      "description": "Stop the native preview take, deliberately close that preview, let the original input settle and close its parked source take. Selects the original product page with recording off; does not save a PDF."
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "artifactId"],
+      "properties": {
+        "kind": {"const": "open-artifact"},
+        "artifactId": {"$ref": "#/$defs/sessionId"}
+      },
+      "description": "Open an existing retained PDF from this session in Chrome's PDF viewer after verifying its exact bytes and hash. Returns pageId and artifactId and selects the viewer with recording off. A viewer failure leaves the retained PDF intact."
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "target", "values"],
+      "properties": {
+        "kind": {"const": "select"},
+        "target": {"$ref": "#/$defs/elementTarget"},
+        "values": {"$ref": "#/$defs/stringList"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "target", "deltaX", "deltaY"],
+      "properties": {
+        "kind": {"const": "wheel"},
+        "target": {"$ref": "#/$defs/target"},
+        "deltaX": {"type": "number"},
+        "deltaY": {"type": "number"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "from", "to"],
+      "properties": {
+        "kind": {"const": "drag"},
+        "from": {"$ref": "#/$defs/target"},
+        "to": {"$ref": "#/$defs/target"},
+        "button": {"$ref": "#/$defs/button"},
+        "modifiers": {"type": "array", "uniqueItems": true, "items": {"enum": ["Alt", "Control", "Meta", "Shift"]}},
+        "durationMs": {"type": "number", "exclusiveMinimum": 0, "maximum": 60000}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "target"],
+      "oneOf": [{"required": ["paths"]}, {"required": ["artifactIds"]}, {"required": ["sourceArtifacts"]}],
+      "properties": {
+        "kind": {"const": "upload"},
+        "target": {"$ref": "#/$defs/elementTarget", "description": "An observed file input (including hidden inputs), or a visible control that opens an input-backed file chooser. The runtime arms the chooser before its real timed click and selects the admitted files as one action. Native filesystem picker APIs are unavailable."},
+        "paths": {"$ref": "#/$defs/stringList", "description": "Actual local files under admitted input roots. Runtime requires absolute paths and verifies custody."},
+        "artifactIds": {"$ref": "#/$defs/stringList", "description": "Actual retained downloads available to this session. Never recreate an equivalent file."},
+        "sourceArtifacts": {"type": "array", "maxItems": 100, "items": {"type": "object", "additionalProperties": false, "required": ["sourceSetId", "artifactId"], "properties": {"sourceSetId": {"$ref": "#/$defs/retainedId"}, "artifactId": {"$ref": "#/$defs/retainedId"}}}, "description": "Exact retained artifacts from this project's sealed source sets. Obtain sourceSetId and artifactId from artifacts list; both identities are required, and bytes are verified before input."}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "dialogId", "response"],
+      "properties": {
+        "kind": {"const": "dialog"},
+        "dialogId": {"type": "string", "maxLength": 200},
+        "response": {"enum": ["accept", "dismiss"]},
+        "promptText": {"type": "string", "maxLength": 10000}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "auth-begin"}},
+      "description": "Prefer session handoff with its stable --id. Authentication stops observation and recording before human credentials."
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "auth-resume"}},
+      "description": "Prefer session resume with its own stable --id. Observe again before starting a new take."
+    }
+  ],
+  "$defs": {
+    "sessionId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,100}$"},
+    "expectPrintPreview": {"const": true, "description": "Dispatch this real product input and discover exactly one new Chrome native print preview in this browser context, excluding targets already present. Source binding relies on this exclusive expected action and context, not a browser-proved opener relationship. No concurrent manual browser input is permitted. Inspect/rejoin the same action ID instead of replaying print."},
+    "retainedId": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"},
+    "button": {"enum": ["left", "middle", "right"]},
+    "stringList": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 10000}},
+    "elementTarget": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ref"],
+      "properties": {"ref": {"type": "string"}},
+      "description": "An element reference returned by observe, not a selector or label."
+    },
+    "surfaceTarget": {
+      "type": "object", "additionalProperties": false,
+      "required": ["surfaceId", "x", "y"],
+      "properties": {
+        "surfaceId": {"type": "string"},
+        "x": {"type": "number"},
+        "y": {"type": "number"}
+      },
+      "description": "Coordinates in the current observed CSS viewport, bound to its surfaceId. The observation declares coordinateSpace css, width and height in CSS pixels, and screenshotPixels in native bitmap pixels; convert screenshot positions using those dimensions."
+    },
+    "target": {"oneOf": [{"$ref": "#/$defs/elementTarget"}, {"$ref": "#/$defs/surfaceTarget"}]}
+  }
+}

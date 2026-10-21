@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:walkthrough:input:capture-seal:1",
+  "title": "Walkthrough source selection",
+  "description": "Input to capture seal --input <file> or --data <JSON>. Seals selected completed takes and actual retained session downloads. Runtime verifies take completion, retained bytes and artifact identity; the schema neither opens the application nor proves its success.",
+  "type": "object",
+  "required": ["takeIds"],
+  "properties": {
+    "takeIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "artifacts": {
+      "type": "array",
+      "description": "Optional actual downloads to retain. Empty is valid. File paths, filenames, media types and byte hashes come from each retained download, not the author. Artifact IDs must be unique within the resulting source set.",
+      "items": {
+        "type": "object",
+        "required": ["sessionId", "artifactId", "title", "role"],
+        "properties": {
+          "sessionId": {"$ref": "#/$defs/id"},
+          "artifactId": {"$ref": "#/$defs/id"},
+          "title": {"type": "string", "pattern": "\\S"},
+          "role": {"enum": ["deliverable", "source"], "description": "deliverable includes this actual file in the local delivery; source retains it as supporting material."}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"}
+  }
+}
