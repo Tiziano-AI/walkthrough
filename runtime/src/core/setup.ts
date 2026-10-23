@@ -10,6 +10,7 @@ import { assertPrivateFile, sha256 } from './files.ts';
 import { licensePath, validateLicenseAssertion, verifyLicense, type LicenseAssertion } from './license.ts';
 import { runtimePaths } from './runtime-paths.ts';
 import { readToolchainSelection, resolveLocalTools, toolchainSelectionPath } from './toolchain.ts';
+import { qualifiedNode } from './environment.ts';
 
 type ToolName = keyof LocalTools;
 export type SetupToolIdentities = Record<ToolName, { path: string; sha256: string; version: string }>;
@@ -109,10 +110,10 @@ export async function inspectSetupTools(tools: LocalTools, signal?: AbortSignal)
   const identities = {} as SetupToolIdentities;
   for (const name of toolNames) {
     const path = tools[name], version = (await command(path, [name === 'ffmpegPath' || name === 'ffprobePath' ? '-version' : '--version'], { signal })).trim().split('\n')[0];
-    const acceptable = name === 'nodePath' ? /^v24\.(\d+)\.\d+$/.test(version) && Number(version.split('.')[1]) >= 20
-      : name === 'browserPath' ? version.includes('153.0.8010.12')
+    const acceptable = name === 'nodePath' ? qualifiedNode(version)
+      : name === 'browserPath' ? version.includes('156.0.8078.4')
       : version.startsWith(name === 'ffmpegPath' ? 'ffmpeg version ' : 'ffprobe version ');
-    if (!acceptable) throw failure('SETUP_PREREQUISITE_UNQUALIFIED', `The selected ${name} is outside this release's qualified contract. Supply Node 24.20 or later on the 24 line, Chrome for Testing 153.0.8010.12 and working FFmpeg/ffprobe executables.`);
+    if (!acceptable) throw failure('SETUP_PREREQUISITE_UNQUALIFIED', `The selected ${name} is outside this release's qualified contract. Supply Node 24.22.1 or later on the 24 line, Chrome for Testing 156.0.8078.4 and working FFmpeg/ffprobe executables.`);
     identities[name] = { path, sha256: await digestFile(path), version };
   }
   return identities;
@@ -306,7 +307,7 @@ export async function setupInspect(options: { signal?: AbortSignal } = {}, depen
   checks.push({ id: 'audio-runtime', status: audio.status === 'provisioned' ? 'ready' : audio.status === 'runtime-drift' ? 'changed' : audio.status === 'missing' ? 'missing' : audio.status === 'invalid' || audio.status === 'legacy-provision' ? 'invalid' : 'unavailable',
     ...(audio.status !== 'provisioned' ? { code: `AUDIO_${audio.status.toUpperCase().replaceAll('-', '_')}`, nextStep: 'Inspect the installed Voices doctor and saved voices; prepare and apply an explicit candidate. No model download is performed by setup.' } : {}) });
   try { await verifyLicense(destination.license); checks.push({ id: 'operator-license', status: 'ready' }); }
-  catch { checks.push({ id: 'operator-license', status: checks.find(check => check.id === 'license-configuration')?.status === 'missing' ? 'missing' : 'invalid', code: 'LICENSE_ELIGIBILITY_NOT_PROVISIONED', nextStep: 'Ask the operator for the applicable Remotion 4.0.520 license basis; do not infer it.' }); }
+  catch { checks.push({ id: 'operator-license', status: checks.find(check => check.id === 'license-configuration')?.status === 'missing' ? 'missing' : 'invalid', code: 'LICENSE_ELIGIBILITY_NOT_PROVISIONED', nextStep: 'Ask the operator for the applicable Remotion 4.0.538 license basis; do not infer it.' }); }
   return { schemaVersion: 1, status: pending || checks.some(check => check.status !== 'ready') ? 'not-ready' as const : 'ready' as const,
     targets: destination, tools, audio, checks, pending, downloads: false, inference: false,
     nextStep: pending ? applyAgain(pending.candidatePath, pending.candidateSha256) : checks.every(check => check.status === 'ready') ? 'Setup is selected. Use doctor for the capture or compose prerequisites.' : 'Resolve the named prerequisite or configuration, then prepare and apply a reviewed setup candidate.' };

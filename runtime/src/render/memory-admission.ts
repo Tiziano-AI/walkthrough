@@ -4,77 +4,44 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 
-export const REMOTION_MEMORY_ADMISSION_VERSION = "4.0.520";
-export const REMOTION_MEMORY_ADMISSION_PATCH_ID = "walkthrough-memory-admission-v1";
-export const REMOTION_MEMORY_ADMISSION_UPSTREAM_SHA256 = "dd61f030b2603447063a007a07a705ebf7aa4e33d737dc1f83e119a80906ef00";
-export const REMOTION_MEMORY_ADMISSION_PATCHED_SHA256 = "39b52814771bcb4c40dc107eca214bf91bfddc55811d168b84d24d9a0a6c0d82";
+export const REMOTION_MEMORY_ADMISSION_VERSION = "4.0.538";
+export const REMOTION_STREAMING_STRATEGY_SHA256 = "46309d658e5909324558ecae96adfc2096146a087ee674a86ac54e1436e7ab41";
 const digest = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
 const require = createRequire(import.meta.url);
 
-/** Only the prestitcher admission sample changes. Cache and thread sizing keep
- * Remotion's getAvailableMemory; its estimate and strict reserve stay intact. */
-export function patchMemoryAdmissionSource(source: string) {
-  if (digest(source) !== REMOTION_MEMORY_ADMISSION_UPSTREAM_SHA256) throw new Error("render:memory_admission_upstream_hash_mismatch");
-  const before = "    const freeMemory = (0, get_available_memory_1.getAvailableMemory)(logLevel);";
-  if (source.indexOf(before) < 0 || source.indexOf(before) !== source.lastIndexOf(before)) throw new Error("render:memory_admission_patch_context_mismatch");
-  const sample = `    // ${REMOTION_MEMORY_ADMISSION_PATCH_ID}: Node 24's Darwin sample includes
-    // reclaimable inactive/purgeable memory; free-only bytes understate admission.
-    const freeMemory = process.platform === 'darwin'
-        ? process.availableMemory()
-        : (0, get_available_memory_1.getAvailableMemory)(logLevel);
-    const validMemorySample = Number.isSafeInteger(freeMemory) && freeMemory >= 0;`;
-  let patched = source.replace(before, sample);
-  const admission = "    const hasEnoughMemory = (0, exports.hasEnoughMemoryForParallelEncoding)({";
-  if (patched.indexOf(admission) < 0 || patched.indexOf(admission) !== patched.lastIndexOf(admission)) throw new Error("render:memory_admission_patch_context_mismatch");
-  patched = patched.replace(admission, "    const hasEnoughMemory = (process.platform !== 'darwin' || validMemorySample) && (0, exports.hasEnoughMemoryForParallelEncoding)({");
-  const returnPoint = "    return {\n        hasEnoughMemory,\n        freeMemory,\n        estimatedUsage,\n    };";
-  if (patched.indexOf(returnPoint) < 0 || patched.indexOf(returnPoint) !== patched.lastIndexOf(returnPoint)) throw new Error("render:memory_admission_patch_context_mismatch");
-  patched = patched.replace(returnPoint, `    // Keep the actual admission input before onStart or browser cleanup can fail.
-    // stderr is the already-owned renderer log, never the public JSON channel.
-    process.stderr.write(JSON.stringify({
-        kind: 'walkthrough-render-memory-admission', schemaVersion: 1,
-        platform: process.platform,
-        memorySource: process.platform === 'darwin' ? 'node:process.availableMemory' : '@remotion/renderer:getAvailableMemory',
-        sampleValid: validMemorySample,
-        availableBytes: validMemorySample ? freeMemory : null, estimatedUsageBytes: estimatedUsage,
-        minimumRemainingBytes: MINIMUM_MEMORY_LEFT,
-        requiredAvailableBytesExclusive: estimatedUsage + MINIMUM_MEMORY_LEFT,
-        width, height, hasEnoughMemory,
-    }) + '\\n');
-${returnPoint}`);
-  return patched;
-}
-
-async function dependencyIdentity() {
+/** Upstream removed its prestitcher admission/fallback in 4.0.538. Verify the
+ * reviewed CJS strategy without resurrecting or patching its deleted module. */
+export async function verifyStreamingEncodingStrategy() {
   const dist = path.dirname(require.resolve("@remotion/renderer"));
   const manifest = JSON.parse(await fs.readFile(path.join(dist, "../package.json"), "utf8"));
   if (manifest.version !== REMOTION_MEMORY_ADMISSION_VERSION) throw new Error("render:memory_admission_version_mismatch");
-  return { filePath: path.join(dist, "prestitcher-memory-usage.js"), version: REMOTION_MEMORY_ADMISSION_VERSION };
+  const filePath = path.join(dist, "render-media.js"), sha256 = digest(await fs.readFile(filePath));
+  if (sha256 !== REMOTION_STREAMING_STRATEGY_SHA256) throw new Error("render:streaming_strategy_hash_mismatch");
+  return { filePath, version: REMOTION_MEMORY_ADMISSION_VERSION, sha256, admission: 'walkthrough-worker' as const };
 }
 
-/** Production verifies exact bytes; it never provisions or repairs dependencies. */
-export async function verifyMemoryAdmissionPatch() {
-  const identity = await dependencyIdentity();
-  const sha256 = digest(await fs.readFile(identity.filePath));
-  if (sha256 !== REMOTION_MEMORY_ADMISSION_PATCHED_SHA256) throw new Error("render:memory_admission_patch_not_provisioned");
-  return { ...identity, sha256, patchId: REMOTION_MEMORY_ADMISSION_PATCH_ID };
+/** Preserve the former strict 1000-byte/pixel estimate and 2 GB reserve at the
+ * existing worker boundary. A sample is admission evidence, not an OOM oracle. */
+export function streamingMemoryAdmission(width: number, height: number, availableBytes = process.availableMemory()): MemoryAdmission {
+  if (![width, height].every(value => Number.isSafeInteger(value) && value > 0)
+    || !Number.isSafeInteger(width * height * 1000 + 2_000_000_000)) throw new Error('render:memory_admission_dimensions_invalid');
+  const sampleValid = Number.isSafeInteger(availableBytes) && availableBytes >= 0;
+  const estimatedUsageBytes = width * height * 1000, minimumRemainingBytes = 2_000_000_000;
+  const requiredAvailableBytesExclusive = estimatedUsageBytes + minimumRemainingBytes;
+  return {kind: 'walkthrough-render-memory-admission', schemaVersion: 1, platform: process.platform,
+    memorySource: 'node:process.availableMemory', sampleValid, availableBytes: sampleValid ? availableBytes : null,
+    estimatedUsageBytes, minimumRemainingBytes, requiredAvailableBytesExclusive, width, height,
+    hasEnoughMemory: sampleValid && availableBytes > requiredAvailableBytesExclusive};
 }
 
-/** Explicit installation/development provisioning of the one admitted file. */
-export async function provisionMemoryAdmissionPatch() {
-  const identity = await dependencyIdentity();
-  const original = await fs.readFile(identity.filePath, "utf8");
-  if (digest(original) === REMOTION_MEMORY_ADMISSION_PATCHED_SHA256) return verifyMemoryAdmissionPatch();
-  const patched = patchMemoryAdmissionSource(original);
-  if (digest(patched) !== REMOTION_MEMORY_ADMISSION_PATCHED_SHA256) throw new Error("render:memory_admission_patch_hash_mismatch");
-  const temporary = `${identity.filePath}.walkthrough-patch-${process.pid}`;
-  const handle = await fs.open(temporary, "wx", (await fs.stat(identity.filePath)).mode & 0o777);
-  try {
-    try { await handle.writeFile(patched); } finally { await handle.close(); }
-    if (digest(await fs.readFile(identity.filePath)) !== REMOTION_MEMORY_ADMISSION_UPSTREAM_SHA256) throw new Error("render:memory_admission_dependency_changed_during_provision");
-    await fs.rename(temporary, identity.filePath);
-  } finally { await fs.rm(temporary, { force: true }); }
-  return verifyMemoryAdmissionPatch();
+export function requireStreamingMemory(width: number, height: number) {
+  const admission = streamingMemoryAdmission(width, height);
+  process.stderr.write(JSON.stringify(admission) + '\n');
+  if (!admission.hasEnoughMemory) {
+    process.stderr.write('render:streaming_encoding_required\n');
+    throw new Error('render:streaming_encoding_required');
+  }
+  return admission;
 }
 
 export interface MemoryAdmission {
@@ -91,7 +58,7 @@ function admittedDiagnostic(value: unknown): value is MemoryAdmission {
   const item = value as MemoryAdmission;
   return item.kind === 'walkthrough-render-memory-admission' && item.schemaVersion === 1
     && typeof item.platform === 'string' && item.platform.length <= 32
-    && item.memorySource === (item.platform === 'darwin' ? 'node:process.availableMemory' : '@remotion/renderer:getAvailableMemory')
+    && (item.memorySource === 'node:process.availableMemory' || item.platform !== 'darwin' && item.memorySource === '@remotion/renderer:getAvailableMemory')
     && [item.estimatedUsageBytes, item.minimumRemainingBytes, item.requiredAvailableBytesExclusive, item.width, item.height].every(value => Number.isSafeInteger(value) && value >= 0)
     && item.width > 0 && item.height > 0
     && item.estimatedUsageBytes === item.width * item.height * 1000
@@ -99,7 +66,7 @@ function admittedDiagnostic(value: unknown): value is MemoryAdmission {
     && item.requiredAvailableBytesExclusive === item.estimatedUsageBytes + item.minimumRemainingBytes
     && (item.sampleValid === true && typeof item.availableBytes === 'number' && Number.isSafeInteger(item.availableBytes) && item.availableBytes >= 0
       && item.hasEnoughMemory === (item.availableBytes > item.requiredAvailableBytesExclusive)
-      || item.platform === 'darwin' && item.sampleValid === false && item.availableBytes === null && item.hasEnoughMemory === false);
+      || item.sampleValid === false && item.availableBytes === null && item.hasEnoughMemory === false);
 }
 
 export interface StreamingEncodingRefusal {

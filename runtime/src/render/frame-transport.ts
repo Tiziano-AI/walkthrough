@@ -3,18 +3,18 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 
-export const REMOTION_FRAME_TRANSPORT_VERSION = "4.0.520";
+export const REMOTION_FRAME_TRANSPORT_VERSION = "4.0.538";
 export const REMOTION_FRAME_TRANSPORT_PATCH_ID = "walkthrough-frame-transport-v1";
 export const REMOTION_FRAME_TRANSPORT_FILES = {
   esm: {
     relativePath: "dist/esm/index.mjs",
-    upstreamSha256: "be3fde80b1142b9c4d1376587978d9d17dffaf777ea87df5990ff710ca47bbd1",
-    patchedSha256: "8962511a683fd42991b5b33236c007a38eaf831b23f1086dc7f82618070e396f",
+    upstreamSha256: "11d895cf1290745cad71ea9ac7c589b9941a1cc2e8e0be3d416e13562bd1fff4",
+    patchedSha256: "386b1792a81bff6b4b0aa6f819287c47a36d8b6974127c237efc7b944af1ef6b",
   },
   cjs: {
     relativePath: "dist/cjs/video/OffthreadVideoForRendering.js",
-    upstreamSha256: "f14a7ac41064a0a2514d6b8627aef8e401406747a85c2017520a709381c38559",
-    patchedSha256: "5af0987e07d58f1a2ff3a5f195e36241b235b9b59aa1b294e41bf519f6021ec6",
+    upstreamSha256: "033a8684197792018a21f427fe0c4a5b2021e65a8a027d79ffe6e759bafdcec9",
+    patchedSha256: "421f0564442aa65286f4f0b413a0e680ca189a0ac12680e05c9c0101170cd024",
   },
 } as const;
 type Format = keyof typeof REMOTION_FRAME_TRANSPORT_FILES;

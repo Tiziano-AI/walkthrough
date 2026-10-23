@@ -1,10 +1,24 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdtemp,mkdir,readFile,readdir,rm,writeFile} from 'node:fs/promises';
+import {chmod,mkdtemp,mkdir,readFile,readdir,rm,writeFile} from 'node:fs/promises';
 import {homedir,tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import test from 'node:test';
 import {discoverLocalTools,readToolchainSelection,resolveLocalTools,toolchainSelectionPath} from '../src/core/toolchain.ts';
+import {qualifiedNode} from '../src/core/environment.ts';
+
+test('runtime and installer agree on the qualified Node 24 security floor',async t=>{
+  const directory=await mkdtemp(join(tmpdir(),'walkthrough-node-floor-'));
+  t.after(()=>rm(directory,{recursive:true,force:true}));
+  const {qualifiedNode:installerNode}=await import(new URL('../scripts/prepare-release.mjs',import.meta.url).href);
+  const executable=join(directory,'node');
+  for(const [version,expected] of [['v24.22.0',false],['v24.22.1',true],['v24.22.2',true],['v24.23.0',true],['v25.0.0',false],['v26.6.0',false],['v24.22.1-rc.1',false]] as const){
+    assert.equal(qualifiedNode(version),expected,version);
+    await writeFile(executable,`#!/bin/sh\nprintf '%s\\n' '${version}'\n`);await chmod(executable,0o700);
+    if(expected)assert.equal(await installerNode(executable),executable);
+    else await assert.rejects(installerNode(executable),{code:'INSTALL_NODE_UNQUALIFIED'});
+  }
+});
 
 test('explicit tool selection wins and malformed selection never falls back',async t=>{
   const directory=await mkdtemp(join(tmpdir(),'walkthrough-tools-'));

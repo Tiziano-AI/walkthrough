@@ -45,9 +45,9 @@ export async function packageRelease({sourceRoot=runtimeRoot,outputRoot,platform
   execFileSync(process.execPath,[join(destination,'scripts/provision-session.mjs')],{cwd:destination,encoding:'utf8'});
   await chmod(join(destination,'bin/walkthrough.mjs'),0o755);
   const files=await inventory(destination);
-  const manifest={schemaVersion:2,kind:'bootstrap',product:'walkthrough',version:pkg.version,platform:'darwin',arch:'arm64',node:'24.20.0 <= version < 25',
-    preparation:{npm:'ci --omit=dev --include=optional --ignore-scripts --no-audit --no-fund',browser:'playwright 1.63.0 install chromium --no-shell'},
-    externalPrerequisites:['Node >= 24.20.0 on the 24 line with npm','FFmpeg and ffprobe','Installed Voices and selected provision in user state'],
+  const manifest={schemaVersion:2,kind:'bootstrap',product:'walkthrough',version:pkg.version,platform:'darwin',arch:'arm64',node:'24.22.1 <= version < 25',
+    preparation:{npm:'ci --omit=dev --include=optional --ignore-scripts --no-audit --no-fund',browser:'playwright 1.64.1 install chromium --no-shell'},
+    externalPrerequisites:['Node >= 24.22.1 on the 24 line with npm','FFmpeg and ffprobe','Installed Voices and selected provision in user state'],
     source:releaseSource(files),files};
   await writeFile(join(destination,'release.json'),JSON.stringify(manifest,null,2)+'\n',{flag:'wx',mode:0o644});
   const release=await verifyRelease(destination);

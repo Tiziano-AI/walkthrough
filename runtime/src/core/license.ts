@@ -4,7 +4,7 @@ import { assertPrivateFile } from './files.ts';
 import { Failure } from './contracts.ts';
 import { runtimePaths } from './runtime-paths.ts';
 
-export const REMOTION_VERSION = '4.0.520';
+export const REMOTION_VERSION = '4.0.538';
 export const REMOTION_LICENSE_URL = `https://github.com/remotion-dev/remotion/blob/v${REMOTION_VERSION}/LICENSE.md`;
 /** These are operator assertions, not eligibility determined by Walkthrough. */
 export const LICENSE_BASES = ['individual', 'small-organization', 'non-profit', 'evaluation', 'company-license'] as const;

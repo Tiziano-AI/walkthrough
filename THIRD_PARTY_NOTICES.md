@@ -13,8 +13,8 @@ during film production.
 
 ## Renderer
 
-Walkthrough uses Remotion **4.0.520**. Remotion is source-available under its
-[own license](https://github.com/remotion-dev/remotion/blob/v4.0.520/LICENSE.md),
+Walkthrough uses Remotion **4.0.538**. Remotion is source-available under its
+[own license](https://github.com/remotion-dev/remotion/blob/v4.0.538/LICENSE.md),
 not MIT. Operators must establish their applicable eligibility or license;
 Walkthrough does not grant or transfer it. See the
 [Remotion license FAQ](https://www.remotion.dev/docs/license/faq).
@@ -42,10 +42,10 @@ those of transitive and native optional dependencies. Principal dependencies:
 
 | Component | Version | Upstream license |
 | --- | --- | --- |
-| Playwright and Playwright Core | 1.63.0 | Apache-2.0 |
-| React and React DOM | 19.2.3 | MIT |
-| mime-types | 2.1.35 | MIT |
-| Remotion, bundler and renderer | 4.0.520 | Remotion license |
+| Playwright and Playwright Core | 1.64.1 | Apache-2.0 |
+| React and React DOM | 19.3.1 | MIT |
+| mime-types | 3.0.2 | MIT |
+| Remotion, bundler and renderer | 4.0.538 | Remotion license |
 
 The browser downloaded by Playwright has its own notices and third-party
 licenses. Node.js, external FFmpeg and Voices are separately installed

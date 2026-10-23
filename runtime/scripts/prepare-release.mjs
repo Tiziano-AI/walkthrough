@@ -36,12 +36,13 @@ async function run(runtime,args,{cwd,env,custody,name}){
   if(status!==0)fail('INSTALL_PREPARATION_FAILED',`Explicit ${name} preparation failed with exit ${status??'unavailable'}. Preserve the pending journal and preparation directory; inspect the upstream command before recovery.`);
 }
 export async function qualifiedNode(runtime){
-  if(typeof runtime!=='string'||!runtime)fail('INSTALL_NODE_SELECTION_REQUIRED','Install requires --node <absolute-invocation-path> selecting Node 24.20.0 or later on the 24 line. Choose the operator-managed path that should survive prerequisite upgrades; the current process executable may be a removable versioned path. The installer never acquires Node.');
+  if(typeof runtime!=='string'||!runtime)fail('INSTALL_NODE_SELECTION_REQUIRED','Install requires --node <absolute-invocation-path> selecting Node 24.22.1 or later on the 24 line. Choose the operator-managed path that should survive prerequisite upgrades; the current process executable may be a removable versioned path. The installer never acquires Node.');
   runtime=resolve(runtime);
   // Validate the current referent without freezing an operator-managed link to
   // a removable versioned installation in the launcher or tool selection.
   const executable=await realpath(runtime).catch(()=>null),version=executable?spawnSync(executable,['--version'],{encoding:'utf8'}):null;
-  if(version?.status!==0||!/^v24\.(\d+)\.\d+\s*$/.test(version.stdout)||Number(version.stdout.split('.')[1])<20)fail('INSTALL_NODE_UNQUALIFIED','Select Node 24.20.0 or later on the 24 line. The installer never acquires Node.');
+  const match=version?.status===0?/^v24\.(\d+)\.(\d+)\s*$/.exec(version.stdout):null;
+  if(!match||!(Number(match[1])>22||Number(match[1])===22&&Number(match[2])>=1))fail('INSTALL_NODE_UNQUALIFIED','Select Node 24.22.1 or later on the 24 line. The installer never acquires Node.');
   return runtime;
 }
 export async function npmForNode(runtime,requested){

@@ -10,6 +10,7 @@ import {executeLocal} from '../src/render/media.ts';
 import type {Timeline} from '../src/render/timeline.ts';
 import {qualifiedBrowserPath} from '../src/core/environment.ts';
 import {resolveLocalTools} from '../src/core/toolchain.ts';
+import {readStreamingEncodingRefusal} from '../src/render/memory-admission.ts';
 
 const {ffmpegPath:ffmpeg,ffprobePath:ffprobe}=resolveLocalTools();
 
@@ -100,6 +101,25 @@ try{await renderMedia({...common,...options,composition,frameRange:[119,119],out
   assert.equal(refusal.starts.length,1);assert.equal(refusal.starts[0].parallelEncoding,false);
   assert.equal(existsSync(refusalOutput),false,'the rejected lane must not create a master');
   assert.match(await readFile(join(directory,'refusal.log'),'utf8'),/render:streaming_encoding_required/,'native cleanup cannot hide the required-encoding diagnostic');
+
+  // Inject only the native sample in a separate real worker. This exercises
+  // its admission boundary after actual browser selection, without creating
+  // memory pressure or patching the dependency under test.
+  const lowMemoryDirectory=join(directory,'capacity-refusal');await mkdir(lowMemoryDirectory);
+  const lowMemoryConfig=join(lowMemoryDirectory,'input.json'),workerPid=join(lowMemoryDirectory,'worker.pid'),sample=join(lowMemoryDirectory,'sample.mjs');
+  await writeFile(lowMemoryConfig,JSON.stringify({...input,directory:lowMemoryDirectory}));
+  await writeFile(sample,`import {writeFileSync} from 'node:fs';writeFileSync(${JSON.stringify(workerPid)},String(process.pid));process.availableMemory=()=>4_073_600_000;\n`);
+  const capacityLog=join(lowMemoryDirectory,'renderer.log');
+  await assert.rejects(executeLocal('/usr/bin/sandbox-exec',['-f',fileURLToPath(new URL('../scripts/loopback-only.sb',import.meta.url)),process.execPath,'--import',sample,fileURLToPath(new URL('../src/render/worker.ts',import.meta.url)),lowMemoryConfig],capacityLog,120000,
+    {PATH:'/usr/bin:/bin',HOME:process.env.HOME,TMPDIR:process.env.TMPDIR,LANG:'en_US.UTF-8'},undefined,fileURLToPath(new URL('..',import.meta.url))),/render:local_process_failed/);
+  const capacityRefusal=await readStreamingEncodingRefusal(capacityLog);
+  assert.equal(capacityRefusal?.causeCode,'render:streaming_encoding_required');
+  assert.equal(capacityRefusal?.memoryAdmission?.availableBytes,4_073_600_000);
+  assert.equal(capacityRefusal?.memoryAdmission?.requiredAvailableBytesExclusive,4_073_600_000);
+  assert.equal(capacityRefusal?.memoryAdmission?.hasEnoughMemory,false);
+  assert.equal(existsSync(join(lowMemoryDirectory,'master.mov')),false);
+  const pid=Number(await readFile(workerPid,'utf8'));
+  for(const target of [pid,-pid])assert.throws(()=>process.kill(target,0),(error:unknown)=>(error as NodeJS.ErrnoException).code==='ESRCH','refusal must settle the worker and its browser group');
 });
 
 test('streaming preserves exact frame identities across packed disjoint, reordered and repeated source use, with unchanged PCM cues',{skip:process.platform!=='darwin'||![ffmpeg,ffprobe,browser].every(existsSync),timeout:120000},async t=>{

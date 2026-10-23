@@ -26,7 +26,7 @@ async function fixture(t: { after: (body: () => void | Promise<void>) => void })
     await put(path, `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(typeof output === 'string' ? output : JSON.stringify(output))});\n`);
     await chmod(path, 0o700); return path;
   };
-  const tools: LocalTools = { nodePath: process.execPath, browserPath: await executable('browser', 'Google Chrome for Testing 153.0.8010.12'),
+  const tools: LocalTools = { nodePath: process.execPath, browserPath: await executable('browser', 'Google Chrome for Testing 156.0.8078.4'),
     ffmpegPath: await executable('ffmpeg', 'ffmpeg version synthetic'), ffprobePath: await executable('ffprobe', 'ffprobe version synthetic') };
   const voiceId = 'studio-reader', hub = join(root, 'shared-hub'), libraryPath = join(root, 'shared-library');
   const tree = '[{"type":"file","path":"model.safetensors","size":4}]';
@@ -69,7 +69,7 @@ test('historical license evidence remains readable without rewriting or acceptin
   assert.equal(validateLicenseAssertion(historical), historical);
   const f = await fixture(t), path = join(f.root, 'config/remotion-license.json'), before = json(historical);
   await put(path, before);
-  assert.deepEqual(await verifyLicense(path), { renderer: 'Remotion', version: '4.0.520', eligibility: 'individual', telemetry: false });
+  assert.deepEqual(await verifyLicense(path), { renderer: 'Remotion', version: '4.0.538', eligibility: 'individual', telemetry: false });
   const report = await setupInspect({}, f.dependencies);
   assert.equal(report.checks.find(check => check.id === 'license-configuration')?.status, 'ready');
   assert.equal(report.checks.find(check => check.id === 'operator-license')?.status, 'ready');
@@ -106,7 +106,7 @@ test('apply revalidates runtime/assets and selects once without changing the can
 
 test('stable prerequisite paths survive replacement while inspect and apply detect changed executable bytes', async t => {
   const f = await fixture(t), keys = ['nodePath', 'ffmpegPath', 'ffprobePath'] as const;
-  const oldTargets = { nodePath: await f.executable('node-first', 'v24.20.0'), ffmpegPath: f.input.tools.ffmpegPath, ffprobePath: f.input.tools.ffprobePath };
+  const oldTargets = { nodePath: await f.executable('node-first', 'v24.22.1'), ffmpegPath: f.input.tools.ffmpegPath, ffprobePath: f.input.tools.ffprobePath };
   const stableDirectory = join(f.root, 'selected-tools'); await mkdir(stableDirectory);
   for (const key of keys) {
     const path = join(stableDirectory, key); await symlink(oldTargets[key], path); f.input.tools[key] = path;
@@ -161,7 +161,7 @@ test('setup inspect keeps absence separate from drift and does not create operat
   await f.executable('voices', { ...f.doctor, runtime: { ...f.doctor.runtime, source_sha256: sha256('updated') } });
   const drift = await setupInspect({}, f.dependencies);
   assert.equal(drift.audio.status, 'runtime-drift'); assert.equal(drift.checks.find(check => check.id === 'audio-runtime')?.status, 'changed');
-  await f.executable('browser', 'Google Chrome for Testing 153.0.8010.12\nchanged binary');
+  await f.executable('browser', 'Google Chrome for Testing 156.0.8078.4\nchanged binary');
   const toolDrift = await setupInspect({}, f.dependencies);
   assert.equal(toolDrift.checks.find(check => check.id === 'prerequisites')?.status, 'changed');
 });

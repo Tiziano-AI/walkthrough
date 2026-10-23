@@ -10,7 +10,7 @@ export function localEnvironment():NodeJS.ProcessEnv {
 
 /** The operator-selected Node is checked against this qualified version line. */
 export const qualifiedNodePath=()=>resolveLocalTools().nodePath;
-export function qualifiedNode(version:string):boolean {const m=/^v24\.(\d+)\.\d+$/.exec(version.trim());return m!==null&&Number(m[1])>=20;}
+export function qualifiedNode(version:string):boolean {const m=/^v24\.(\d+)\.(\d+)$/.exec(version.trim());return m!==null&&(Number(m[1])>22||Number(m[1])===22&&Number(m[2])>=1);}
 
 /** Product-owned installed browser, or an explicit operator selection. No download. */
 export const qualifiedBrowserPath=()=>resolveLocalTools().browserPath;

@@ -12,7 +12,7 @@ import {verifyLicense} from './license.ts';
 import {inspectAudioReadiness} from './audio-readiness.ts';
 import {verifyBrowserCustodyPatch} from '../render/browser-custody.ts';
 import {verifyFrameTransportPatch} from '../render/frame-transport.ts';
-import {verifyMemoryAdmissionPatch,readStreamingEncodingRefusal,type MemoryAdmission} from '../render/memory-admission.ts';
+import {verifyStreamingEncodingStrategy,readStreamingEncodingRefusal,type MemoryAdmission} from '../render/memory-admission.ts';
 import {renderWalkthrough} from '../render/index.ts';
 import {LocalProcessFailure} from '../render/media.ts';
 import {synthesizeNarration,type NarrationResult} from '../audio/index.ts';
@@ -65,13 +65,13 @@ export async function filmPreflight(input:{narration:boolean;signal?:AbortSignal
   await check('tools',async()=>{
     const version=(path:string,args:string[])=>execFileSync(path,args,{encoding:'utf8',timeout:10000,env:localEnvironment(),stdio:['ignore','pipe','pipe']}).split('\n')[0];
     const node=version(localTools.nodePath,['--version']),browser=version(localTools.browserPath,['--version']);
-    if(!qualifiedNode(node)||!browser.includes('153.0.8010.12'))throw Error();
+    if(!qualifiedNode(node)||!browser.includes('156.0.8078.4'))throw Error();
     return {node,browser,ffmpeg:version(localTools.ffmpegPath,['-version']),ffprobe:version(localTools.ffprobePath,['-version'])};
   });
   await check('renderer',async()=>{
-    const pins:Record<string,string>={'remotion':'4.0.520','@remotion/bundler':'4.0.520','@remotion/renderer':'4.0.520','react':'19.2.3','react-dom':'19.2.3','playwright':'1.63.0'};
+    const pins:Record<string,string>={'remotion':'4.0.538','@remotion/bundler':'4.0.538','@remotion/renderer':'4.0.538','react':'19.3.1','react-dom':'19.3.1','playwright':'1.64.1'};
     for(const [name,version] of Object.entries(pins))if(JSON.parse(await readFile(join(paths.runtimeRoot,'node_modules',name,'package.json'),'utf8')).version!==version)throw Error();
-    return {pins,custody:await verifyBrowserCustodyPatch(),frameTransport:await verifyFrameTransportPatch(),memoryAdmission:await verifyMemoryAdmissionPatch()};
+    return {pins,custody:await verifyBrowserCustodyPatch(),frameTransport:await verifyFrameTransportPatch(),memoryAdmission:await verifyStreamingEncodingStrategy()};
   });
   await check('license',verifyLicense);
   if(input.narration)await check('audio',async()=>{
@@ -253,7 +253,7 @@ export async function composeFilm(input:{projectPath:string;edit:unknown;reuseAu
     if(current.sha256!==retained.sha256)throw new Failure('FILM_SOURCE_CHANGED','sources','Restore the exact sealed source set before another composition.');
     if(provisionDigest&&await deps.fileDigest(paths.audioProvisionPath)!==provisionDigest)throw new Failure('FILM_AUDIO_PROVISION_CHANGED','audio','Retain this occurrence and compose using one reviewed audio provision.');
     if((await deps.filmRuntimeIdentity()).digest!==runtime.digest)throw new Failure('FILM_RUNTIME_CHANGED','runtime','Retain this occurrence and compose from one coherent installed runtime.');
-    await saveJson(join(directory,'provenance.json'),{schemaVersion:1,kind:'composition',runtime,sourceSet:{id:edit.sourceSetId,sha256:retained.sha256},editSha256:await deps.fileDigest(join(directory,'film-edit.json')),audio:audioIdentity,renderer:'Remotion 4.0.520',appAccess:false,automaticReplay:false},true);
+    await saveJson(join(directory,'provenance.json'),{schemaVersion:1,kind:'composition',runtime,sourceSet:{id:edit.sourceSetId,sha256:retained.sha256},editSha256:await deps.fileDigest(join(directory,'film-edit.json')),audio:audioIdentity,renderer:'Remotion 4.0.538',appAccess:false,automaticReplay:false},true);
     const names:string[]=[...bundleFiles,'deliverables.json',...deliverables.map(artifact=>artifact.relativePath)];
     await saveJson(join(directory,'checksums.json'),Object.fromEntries(await Promise.all(names.map(async name=>[name,await deps.fileDigest(join(directory,name))]))),true);
     for(const name of [...names,'checksums.json','film-edit.json'])manifest.paths[name]=join(directory,name);

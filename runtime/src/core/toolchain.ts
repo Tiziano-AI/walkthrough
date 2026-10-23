@@ -36,7 +36,7 @@ function onPath(name:string):string {
 /** Discovery is a setup candidate, not silent acceptance of changed identities. */
 export function discoverLocalTools():LocalTools {
   return {nodePath:process.execPath,
-    browserPath:join(homedir(),'.local/share/walkthrough/browsers/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'),
+    browserPath:join(homedir(),'.local/share/walkthrough/browsers/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'),
     ffmpegPath:onPath('ffmpeg'),ffprobePath:onPath('ffprobe')};
 }
 

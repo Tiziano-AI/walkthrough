@@ -2,10 +2,10 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import fs from 'node:fs/promises';
 
-export const CAPTURE_CUSTODY_VERSION = '1.63.0';
-export const CAPTURE_CUSTODY_UPSTREAM_SHA256 = '549070af3acabb3efcc4f55bfe6210f9f7c2fcf633cf7eaa59bfe60719969171';
+export const CAPTURE_CUSTODY_VERSION = '1.64.1';
+export const CAPTURE_CUSTODY_UPSTREAM_SHA256 = '829521b67ed7be90c7d6d6098ff39f2241562d47e4ad7ccab13710924a56001d';
 export const CAPTURE_CUSTODY_PATCH_ID = 'walkthrough-capture-browser-custody-v1';
-export const CAPTURE_CUSTODY_PATCHED_SHA256 = 'a308452e0ba659c3aa22e770833721d97c6297e4205e10ce6ef2d9c7f3037863';
+export const CAPTURE_CUSTODY_PATCHED_SHA256 = '6931267fe6f5a0230066e3e01a5a9b8724827629893e2df9f26201a5eec14e79';
 const require = createRequire(import.meta.url);
 const digest = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
 

@@ -247,7 +247,7 @@ test('real native print retains one input, calibrated source/preview/viewer and 
   skip:enabled?false:'NOT QUALIFIED: explicit WALKTHROUGH_NATIVE_PRINT_BROWSER_TEST=1 and exclusive headed browser/media resources required',
   timeout:240000,
 },async t=>{
-  assert.equal(process.platform,'darwin');assert.equal(process.arch,'arm64');assert.ok(qualifiedNode(process.version),'Use qualified Node 24.20.0 or later on the 24 line.');
+  assert.equal(process.platform,'darwin');assert.equal(process.arch,'arm64');assert.ok(qualifiedNode(process.version),'Use qualified Node 24.22.1 or later on the 24 line.');
   for(const path of [qualifiedNodePath(),qualifiedBrowserPath(),ffmpeg,ffprobe,pdfinfo,pdftotext])await access(path,constants.X_OK).catch(()=>assert.fail(`Required executable missing: ${path}; no dependency is downloaded by this test.`));
   await verifyProcessReader();
   const root=await realpath(await mkdtemp('/private/tmp/wt-native-print-'));

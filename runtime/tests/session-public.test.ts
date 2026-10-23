@@ -25,11 +25,15 @@ async function fixture(tools?:LocalTools){
   const cli=async(args:string[],runtime=program)=>{
     let stdout:string,stderr:string,code=0;
     try{({stdout,stderr}=await execute(process.execPath,[join(runtime,'bin/walkthrough.mjs'),...args,'--json'],{cwd:directory,env:{...process.env,WALKTHROUGH_STATE_ROOT:state,WALKTHROUGH_CONFIG_ROOT:join(directory,'settings')},timeout:60000,maxBuffer:8*1024*1024}));}
-    catch(error){const result=error as {stdout:string;stderr:string;code:number};stdout=result.stdout;stderr=result.stderr;code=result.code;}
-    assert.equal(stderr,'');const lines=stdout.trim().split('\n');assert.equal(lines.length,1,'one public record');
+    catch(error){
+      const result=error as {stdout:string;stderr:string;code:number|string;signal?:string;killed?:boolean};
+      if(result.killed||result.signal||typeof result.code!=='number')throw new Error(`Public CLI did not complete: ${JSON.stringify({args,code:result.code,signal:result.signal,killed:result.killed,stdout:result.stdout,stderr:result.stderr,fixture:directory})}`,{cause:error});
+      stdout=result.stdout;stderr=result.stderr;code=result.code;
+    }
+    assert.equal(stderr,'');assert.notEqual(stdout.trim(),'',`Public CLI returned no record: ${JSON.stringify({args,code,fixture:directory})}`);const lines=stdout.trim().split('\n');assert.equal(lines.length,1,'one public record');
     return {code,record:JSON.parse(lines[0])};
   };
-  return {directory,state,project,cli,close:async()=>{await new Promise<void>(resolve=>server.close(()=>resolve()));await rm(directory,{recursive:true,force:true});}};
+  return {directory,state,project,cli,close:async(retain=false)=>{await new Promise<void>(resolve=>server.close(()=>resolve()));if(!retain)await rm(directory,{recursive:true,force:true});}};
 }
 
 test('real public launcher opens, observes, delivers trusted input, inspects and closes under the loopback sandbox',async t=>{
@@ -39,7 +43,7 @@ test('real public launcher opens, observes, delivers trusted input, inspects and
     if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;
     t.skip('Install the selected browser or provide an explicit WALKTHROUGH_TEST_BROWSER_PATH. No browser is downloaded.');return;
   }
-  const f=await fixture(tools);let opened=false;
+  const f=await fixture(tools);let opened=false,failure:unknown;
   try{
     const created=await f.cli(['project','create','--path','.walkthrough','--brief','brief.json']);assert.equal(created.code,0,JSON.stringify(created.record));
     const openedResult=await f.cli(['session','open','--project',f.project,'--id','public']);assert.equal(openedResult.code,0,JSON.stringify(openedResult.record));opened=true;
@@ -54,10 +58,13 @@ test('real public launcher opens, observes, delivers trusted input, inspects and
     assert.equal((await f.cli(['session','close','--project',f.project,'--session','public'])).record.result.status,'closed');opened=false;
     const retained=await f.cli(['session','inspect','--project',f.project,'--session','public']);assert.equal(retained.record.result.session.status,'closed');
     await assert.rejects(access(join(f.state,'active','public.json')),{code:'ENOENT'});
-  }finally{
-    if(opened){const closed=await f.cli(['session','close','--project',f.project,'--session','public']);assert.equal(closed.code,0,JSON.stringify(closed.record));}
-    await f.close();
+  }catch(error){failure=error;}
+  finally{
+    try{if(opened){const closed=await f.cli(['session','close','--project',f.project,'--session','public']);assert.equal(closed.code,0,JSON.stringify(closed.record));}}
+    catch(error){failure=failure?new AggregateError([failure,error],`Public session and its cleanup failed; retain ${f.directory}`):error;}
+    await f.close(!!failure);
   }
+  if(failure)throw failure;
 });
 
 test('public open refuses a missing process reader before reserving or launching a session',async()=>{

@@ -5,7 +5,7 @@ import { executeFfmpeg, executeLocal, finishMedia, probeMedia } from "./media.ts
 import { validateTimeline, type Timeline } from "./timeline.ts";
 import { verifyBrowserCustodyPatch } from "./browser-custody.ts";
 import { verifyFrameTransportPatch } from "./frame-transport.ts";
-import { verifyMemoryAdmissionPatch } from "./memory-admission.ts";
+import { verifyStreamingEncodingStrategy } from "./memory-admission.ts";
 import { stageRenderSource } from "./source-staging.ts";
 import { createRenderProgressWriter, readRenderWorkCounter } from "./progress.ts";
 import { planRenderSources, type RenderSourceFile } from "./source-plan.ts";
@@ -33,7 +33,7 @@ export async function renderWalkthrough(options: RenderWalkthroughOptions) {
   if (options.signal?.aborted) throw new Error("render:cancelled");
   await verifyBrowserCustodyPatch();
   await verifyFrameTransportPatch();
-  await verifyMemoryAdmissionPatch();
+  await verifyStreamingEncodingStrategy();
   const sourceWindows = planRenderSources(options.timeline, frameRange);
   const usedSourceIds = Object.keys(sourceWindows);
   if (usedSourceIds.some(id => !Object.hasOwn(options.sourcePaths,id))) throw new Error("render:source_path_missing");

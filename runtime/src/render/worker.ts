@@ -6,7 +6,7 @@ import type { FfmpegOverrideFn, OnStartData } from "@remotion/renderer";
 import type { CompositionProps } from "./composition.ts";
 import { enableBrowserGroupCustody, loadCustodiedRenderer } from "./browser-custody.ts";
 import { verifyFrameTransportPatch } from "./frame-transport.ts";
-import { verifyMemoryAdmissionPatch } from "./memory-admission.ts";
+import { verifyStreamingEncodingStrategy, requireStreamingMemory } from "./memory-admission.ts";
 import { createRenderProgressWriter, remotionProgress } from "./progress.ts";
 
 /** Remotion chooses .mkv for its H.264/PCM intermediate even when the final
@@ -25,8 +25,8 @@ export const masterFfmpegOverride:FfmpegOverrideFn=({type,args})=>{
 };
 
 export function requireStreamingEncoding({parallelEncoding}:Pick<OnStartData,'parallelEncoding'>){
-  // The native memory admission can disable parallel encoding. onStart runs
-  // before the frame loop: refuse that all-frame PNG spool, never fall back.
+  // Codec/encoder support can disable parallel encoding. onStart runs before
+  // the frame loop: refuse that all-frame PNG spool, never fall back.
   if(parallelEncoding!==true){
     // Remotion has already begun creating its page pool. Its cleanup may emit
     // a secondary Target closed rejection, so retain the refusal first.
@@ -50,7 +50,7 @@ type WorkerConfig={
 async function runWorker(configPath:string){
   // Invoked only by renderWalkthrough in a network-contained process group.
   await verifyFrameTransportPatch();
-  await verifyMemoryAdmissionPatch();
+  await verifyStreamingEncodingStrategy();
   const { selectComposition, renderMedia } = await loadCustodiedRenderer();
   // executeLocal creates this worker's private process group before executing it.
   // The patched launch owner joins Chromium to that group before readiness awaits.
@@ -65,6 +65,9 @@ async function runWorker(configPath:string){
     onBrowserDownload: () => { throw new Error("render:browser_download_forbidden"); }, offthreadVideoThreads: 1 };
   progress.record({phase:'selecting-composition'});await progress.flush();
   const composition = await selectComposition({ ...common, id: "Walkthrough" });
+  // Upstream no longer performs capacity admission. Keep the strict reserve
+  // before native encoding starts; executeLocal still owns all failure cleanup.
+  requireStreamingMemory(composition.width, composition.height);
   const outputFrames=config.frameRange?config.frameRange[1]-config.frameRange[0]+1:composition.durationInFrames;
   progress.record({phase:'rendering-and-encoding',frames:{rendered:0,total:outputFrames}});await progress.flush();
   try{

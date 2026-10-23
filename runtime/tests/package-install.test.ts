@@ -61,7 +61,7 @@ async function bootstrapFixture(mode='success'){
     if(${JSON.stringify(mode)}==='hold'){while(!await import('node:fs/promises').then(fs=>fs.stat(${JSON.stringify(join(f.root,'continue'))}).then(()=>true,()=>false)))await new Promise(resolve=>setTimeout(resolve,20));}
     for(const name of ${JSON.stringify(files.nativePackages)}){const root=join(process.cwd(),'node_modules',name);await mkdir(root,{recursive:true});await writeFile(join(root,'package.json'),JSON.stringify({name,version:'1.0.0'}));}
     const core=join(process.cwd(),'node_modules/playwright-core'),pw=join(process.cwd(),'node_modules/playwright');await mkdir(core,{recursive:true});await mkdir(pw,{recursive:true});
-    await writeFile(join(core,'package.json'),JSON.stringify({version:'1.63.0'}));await writeFile(join(core,'browsers.json'),JSON.stringify({browsers:[{name:'chromium',revision:'1243',browserVersion:'153.0.8010.12'}]}));
+    await writeFile(join(core,'package.json'),JSON.stringify({version:'1.64.1'}));await writeFile(join(core,'browsers.json'),JSON.stringify({browsers:[{name:'chromium',revision:'1248',browserVersion:'156.0.8078.4'}]}));
     await writeFile(join(pw,'package.json'),JSON.stringify({type:'module'}));await writeFile(join(pw,'cli.js'),${JSON.stringify(browserScript)});
   `);
   const manifest=JSON.parse(await readFile(manifestPath,'utf8'));delete manifest.bootstrapDigest;manifest.kind='bootstrap';manifest.files=await files.inventory(f.release,{exclude:['release.json']});manifest.source=files.releaseSource(manifest.files);await writeFile(manifestPath,JSON.stringify(manifest));

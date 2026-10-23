@@ -226,12 +226,15 @@ sample-and-hold frames on the output grid; selected intervals are packed and
 shared, while source mappings preserve their original clocks. Duplication in
 a derivative never qualifies weak source cadence. Source seals remain unchanged.
 
-The pinned prestitcher's memory admission uses Node 24's `process.availableMemory()`
-on macOS, including reclaimable memory rather than only currently free pages.
-Its upstream estimate and strict remaining-memory reserve stay unchanged; other
-cache/thread memory decisions retain their upstream sampler. The actual admission
-inputs and decision remain in the renderer log, and a streaming refusal survives
-secondary browser-cleanup errors. An admission decision is not an OOM diagnosis.
+Remotion 4.0.538 no longer makes prestitcher admission depend on memory. The
+Walkthrough worker now samples Node 24's `process.availableMemory()` once before
+native rendering, preserving the former strict estimate of 1000 bytes per pixel
+plus a 2,000,000,000-byte reserve. Equality or an invalid sample refuses; other
+cache/thread decisions retain Remotion's upstream sampler. The removed upstream
+admission module is not patched or recreated. The actual inputs and decision
+remain in the renderer log, and a streaming refusal survives secondary
+browser-cleanup errors. Admission is not an OOM diagnosis or a peak-memory
+guarantee.
 
 The final film is 1920×1080/60 fps with at most 1.5× zoom. Full-frame footage,
 the enhanced pointer, real click feedback and brief phrase captions share one

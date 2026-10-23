@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 
-export const REMOTION_CUSTODY_VERSION = "4.0.520";
+export const REMOTION_CUSTODY_VERSION = "4.0.538";
 export const REMOTION_CUSTODY_UPSTREAM_SHA256 = "e5401a2f9ddacefd34814025ce2a26c378584cab31237b1655d74c880e07adfe";
 // Deterministically derived from the one admitted upstream file by patchSource.
 export const REMOTION_CUSTODY_PATCH_ID = "walkthrough-browser-custody-v1";

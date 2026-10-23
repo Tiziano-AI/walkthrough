@@ -10,7 +10,7 @@ export const fail=(code,recovery)=>{throw failure(code,recovery);};
 export const requiredInputSchemas=['project-brief','session-action','action-resolution','capture-start','capture-mark','capture-seal','film-edit'];
 export const requiredProcessReaderFiles=['scripts/provision-session.mjs','src/session/native/process-reader.c','native/walkthrough-process-reader','native/process-reader.json'];
 export const nativePackages=['@remotion/compositor-darwin-arm64','@rspack/binding-darwin-arm64','@esbuild/darwin-arm64'];
-export const browserQualification={packageVersion:'1.63.0',revision:'1243',version:'153.0.8010.12',executable:'chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'};
+export const browserQualification={packageVersion:'1.64.1',revision:'1248',version:'156.0.8078.4',executable:'chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'};
 // Identify the owned bytes actually shipped, independent of checkout location or
 // Git availability/dirty state. The complete release inventory separately covers
 // production dependencies. This makes no claim about a clean Git commit.
