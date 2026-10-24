@@ -99,7 +99,11 @@ export type ObserveOptions = {pageId?:string;screenshot?:boolean;limit?:number;o
 /** A static framing from one current observation, never an input or tracking target. */
 export type CaptureMarkTarget = {observationId:string;ref:string}|{observationId:string;box:Box;coordinateSpace:'screenshot'};
 export type CaptureRequest = {operationId:string;kind:'start'|'mark'|'stop';request?:{title?:string;id?:string;settled?:boolean;target?:CaptureMarkTarget}};
-export type SessionRuntimeOptions = {onClosed?:()=>void};
+/** Content-free boundaries for diagnosing an original close attempt. */
+export type SessionClosePhase = 'starting'|'print-close'|'print-discovery-cancel'|'print-discovery-settle'|
+  'context-close-before-capture'|'capture-stop'|'context-close'|'parked-capture-stop'|
+  'print-dispose'|'input-dispose'|'pending-input-settle'|'events-settle'|'journal-save'|'marker-remove'|'closed'|'failed';
+export type SessionRuntimeOptions = {onClosed?:()=>void;onClosePhase?:(phase:SessionClosePhase)=>void|Promise<void>};
 export type ResolvedTarget = {
   page:Page;point:Point;element?:import('playwright').ElementHandle<HTMLElement|SVGElement>;
   /** Pointer input must still reach the resolved point without retargeting. */

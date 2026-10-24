@@ -10,9 +10,9 @@ This document defines acceptance. It does not declare that every supported
 journey or quality gate has passed. A release's recorded observations must name
 the actual host, installed artifact, source and result tested.
 
-## 0.4.1 dependency candidate
+## 0.4.1 maintenance qualification
 
-The 2026-10-23 source candidate updates the direct runtime and development
+The maintenance updates the direct runtime and development
 dependencies on macOS arm64 with Node 24.22.1. It selects Playwright 1.64.1
 and Chrome for Testing 156.0.8078.4 (revision 1248), Remotion 4.0.538 and
 React 19.3.1. Checked launch-custody and complete-byte frame-transport repairs
@@ -20,43 +20,41 @@ remain. Because Remotion removed its prestitcher capacity check, the existing
 Walkthrough worker now owns the strict memory admission described in
 [Architecture](ARCHITECTURE.md).
 
-Observed source qualification is partial. This candidate is not
-release-qualified, and no successful full `npm test` is established:
+Observed source qualification on 24 October 2026:
 
-- TypeScript checking passes. An earlier targeted packaging, setup,
-  memory-admission and transport run reported 71 passing tests; its exact
-  selected-file list was not retained. The registry reported no outdated direct
-  dependencies and no known advisories for the resolved lockfile; these queries
-  do not establish absence of a supply-chain compromise.
-- A final offline selection of `plugin-guidance.test.ts`,
-  `render-worker.test.ts` and `native-print-browser.test.ts` passed 12 tests for
-  native-plugin guidance links, master encoding/clock options and print
-  settlement. Its headed native-print case remained explicitly skipped.
-- A selected serial run passed 442 of 443 tests. The real public-loopback
-  session opened, observed, delivered trusted input and inspected successfully,
-  but its first close did not return within the test command's existing limit.
-  The former harness obscured that failure with an empty-JSON parse error and
-  removed its fixture during cleanup, so its blocking cause is not established.
-- One instrumented, isolated reproduction passed the same public path and
-  first close (1 test), leaving no owned browser process. It does not explain
-  the earlier failure or prove a runtime repair. The harness now preserves
-  incomplete-command outcomes, original failures and failed fixtures without
-  changing the deadline; the temporary browser logging wrapper is not shipped.
-- Three synthetic renderer integrations passed with 1, 18 and 60 output frames,
-  including source/frame/audio identity, visible captions and camera motion,
-  unsupported-encoding refusal and real-worker capacity refusal at the exact
-  reserve boundary. These are not complete-film perceptual acceptance.
+- The complete serial `tests/*.test.ts` gate passed 724 tests, with no failures
+  or skips, including both opted-in headed browser/media tests. Real native
+  print retained one original input, calibrated product/preview/viewer sources
+  and the full original PDF. The headed geometry test measured the actual
+  document-to-native capture mapping rather than correcting it.
+- Chromium 156 exposed viewport scrollbars outside the calibration cover. The
+  recorder now paints root/body scrollbar parts and reserved gutters without
+  changing application geometry, scroll or focus. Twelve pixel-exact browser
+  regressions cover native/custom/standard scrollbars and preserve concurrent
+  application style changes. Clock detection tolerances were not weakened.
+- A subsequent recorder-start containment prevents new session work after an
+  uncertain start. Four passing deterministic tests retain the original error and ID,
+  rejoin without dispatch, and require explicit original-context closure.
+  Successful starts and pre-dispatch refusals remain usable. A further selected
+  session/public-launch/framing/plugin-guidance gate passed 33 tests after the
+  runtime change; it is not presented as a second full-suite run.
+- An earlier public-loopback close exceeded the harness limit. Its cause is
+  still unestablished: later isolated and complete gates pass that path, not
+  prove a causal repair. The harness now retains original failures and failed
+  fixtures; content-free close-phase diagnostics identify the outstanding
+  boundary without introducing a timeout, kill or retry.
+- TypeScript checking passes. The resolved lockfile's audit reports zero known
+  vulnerabilities after the Zod 4.6.6 override. This does not establish absence
+  of supply-chain compromise. Real synthetic renderer integrations exercise
+  source/frame/audio identity, captions, camera and strict memory admission;
+  they do not establish complete-film perceptual quality.
 
-The canonical default gate runs every `tests/*.test.ts` serially. The observed
-selected runs do not establish its complete coverage or a green result; their
-earlier exact selection lists were not retained, so no complete residual-file
-list is claimed here. That gate and the unexplained close failure must be
-reconciled before release qualification. The two explicitly opted-in headed
-browser/media qualifications were not run.
-No result above establishes a published archive, an upgraded independent CLI,
-native Codex or Claude plugin discovery, current Voices inference, or full-film
-viewing and listening. No installed consumer was changed by these source
-checks.
+These checks qualify the maintenance source, not film comprehension or a new
+author trial. Foreground-application preservation was not independently
+observed in the headed tests; isolated synthetic windows alone do not prove it.
+Archive publication, independent installation and native Codex/Claude selection
+are separate consumer checks recorded with the release. Current Voices
+inference and full-film viewing/listening are not claimed by this maintenance.
 
 ## The finished viewing experience
 

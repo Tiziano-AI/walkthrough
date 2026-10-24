@@ -19,7 +19,7 @@ import {expectNativePrint,NativePrintPreview,requireSameGeneration} from './nati
 import {awaitNativeOperation} from './native-print-transport.ts';
 import {retainPrintArtifact,verifiedPdfArtifact} from './print-artifact.ts';
 import {actionPath,digest,privateDirectory,readAction,readJson,saveInfo,timestamp,validId,writeJson} from './journal.ts';
-import {SessionError,sessionError,type ActionRecord,type ActionRequest,type CaptureMarkTarget,type CaptureRequest,type ElementRef,type Observation,type ObserveOptions,type PageInfo,type ResolvedTarget,type SessionAction,type SessionConfig,type SessionEvent,type SessionInfo,type SessionRuntimeOptions,type SessionTarget} from './contracts.ts';
+import {SessionError,sessionError,type ActionRecord,type ActionRequest,type CaptureMarkTarget,type CaptureRequest,type ElementRef,type Observation,type ObserveOptions,type PageInfo,type ResolvedTarget,type SessionAction,type SessionClosePhase,type SessionConfig,type SessionEvent,type SessionInfo,type SessionRuntimeOptions,type SessionTarget} from './contracts.ts';
 
 const isWithin=(root:string,path:string)=>path===root||path.startsWith(root+sep);
 const loopback=(hostname:string)=>hostname==='localhost'||hostname==='[::1]'||/^127(?:\.\d{1,3}){3}$/.test(hostname);
@@ -667,11 +667,12 @@ export class SessionRuntime {
     }
   }
   captureCommand(request:CaptureRequest){return this.serial(async()=>{
-    this.assertOpen(true);validateCaptureRequest(request);
+    validateCaptureRequest(request);
     const path=join(this.config.directory,'capture-operations',`${request.operationId}.json`),sha256=digest(request);
     let prior:{sha256:string;status:string;result?:unknown;error?:unknown}|undefined;
     try{prior=await readJson(path);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
     if(prior){if(prior.sha256!==sha256)throw new SessionError('CAPTURE_OPERATION_ID_CONFLICT');return prior;}
+    this.assertOpen(true);
     const retained:{sha256:string;operationId:string;status:string;result?:unknown;error?:unknown}={sha256,operationId:request.operationId,status:'outcome-uncertain'};
     await writeJson(path,retained);
     try{
@@ -686,7 +687,16 @@ export class SessionRuntime {
       if(request.kind==='start'){
         if(this.captureActive)throw new SessionError('CAPTURE_ALREADY_ACTIVE');
         this.framingObservation=undefined;
-        retained.result=await this.capture.start(request.request??{});this.captureActive=true;if(page)await this.input(page).samplePointer();
+        try{retained.result=await this.capture.start(request.request??{});}catch(error){
+          // A rejected start does not prove that the backend never recorded.
+          // Fence this context before persistence; only its explicit close can
+          // contain a recorder whose handle was not returned. Never retry it.
+          this.info.status='interrupted';this.info.closeReason='capture-start-failed';
+          const original=sessionError(error);
+          retained.error={...original,recovery:`${original.recovery??''} Close the original session before any further input or capture; the recorder's stopped state is not established.`.trim()};
+          throw error;
+        }
+        this.captureActive=true;if(page)await this.input(page).samplePointer();
       }else if(request.kind==='mark'){
         if(!this.captureActive)throw new SessionError('CAPTURE_NOT_ACTIVE');
         if(!request.request?.title)throw new SessionError('CAPTURE_MARK_TITLE_REQUIRED');
@@ -696,7 +706,7 @@ export class SessionRuntime {
         retained.result=await this.capture.mark({...options,title:request.request.title,...(framing?{target:framing.target,targetObservation:framing.targetObservation,verifyTarget:framing.verify}:{})});
       }else retained.result=await this.stopCapture('stop');
       retained.status='completed';
-    }catch(error){retained.error=sessionError(error);}
+    }catch(error){retained.error??=sessionError(error);}
     this.info.captureActive=this.captureActive||!!this.parkedCapture;await saveInfo(this.info);await writeJson(path,retained);return retained;
   });}
   private async stopCapture(reason:'stop'|'authentication'|'close'){
@@ -712,27 +722,41 @@ export class SessionRuntime {
   close(reason='closed-by-user'):Promise<void>{
     if(this.closing)return this.closing;
     clearTimeout(this.idleTimer);
-    this.closing=(async()=>{
+    // Retain the attempt before invoking observers: a reentrant observer must
+    // rejoin it, and diagnostic failures must never become close failures.
+    const attempt=Promise.withResolvers<void>();this.closing=attempt.promise;
+    void (async()=>{
+      this.closePhase('starting');
       let failure:unknown;
       const preview=this.pendingPrint();
-      if(preview)try{await this.closePrint(preview);}catch(error){failure=error;}
-      else if(this.pendingPrintDiscovery)try{await this.pendingPrintDiscovery.cancel();await this.pendingPrintDiscovery.completion;}catch(error){failure=error;}
+      if(preview)try{this.closePhase('print-close');await this.closePrint(preview);}catch(error){failure=error;}
+      else if(this.pendingPrintDiscovery)try{
+        this.closePhase('print-discovery-cancel');await this.pendingPrintDiscovery.cancel();
+        this.closePhase('print-discovery-settle');await this.pendingPrintDiscovery.completion;
+      }catch(error){failure=error;}
       // Failed Cancel or source settlement cannot safely calibrate a suspended
       // source. Shut down this exact context first, then settle its recorder.
-      if(this.dialogs.size||this.pendingPrintSource&&(!preview||failure))try{await this.context?.close();}catch(error){failure??=error;}
-      try{await this.stopCapture('close');}catch(error){failure=error;}
-      try{await this.context?.close();}catch(error){failure??=error;}
+      if(this.dialogs.size||this.pendingPrintSource&&(!preview||failure))try{this.closePhase('context-close-before-capture');await this.context?.close();}catch(error){failure??=error;}
+      try{this.closePhase('capture-stop');await this.stopCapture('close');}catch(error){failure=error;}
+      try{this.closePhase('context-close');await this.context?.close();}catch(error){failure??=error;}
       // A failed target close may force browser shutdown. Settle the still-owned
       // source recorder once, recording its failure rather than abandoning it.
-      if(this.parkedCapture){const parked=this.parkedCapture;this.parkedCapture=undefined;this.capture=parked.capture;this.capturePage=parked.page;this.captureNative=undefined;this.captureActive=true;try{await this.stopCapture('close');}catch(error){failure??=error;}}
+      if(this.parkedCapture){const parked=this.parkedCapture;this.parkedCapture=undefined;this.capture=parked.capture;this.capturePage=parked.page;this.captureNative=undefined;this.captureActive=true;try{this.closePhase('parked-capture-stop');await this.stopCapture('close');}catch(error){failure??=error;}}
+      this.closePhase('print-dispose');
       for(const preview of this.prints.values())await preview.dispose().catch(()=>{});
+      this.closePhase('input-dispose');
       for(const driver of this.inputs.values())await driver.dispose().catch(()=>{});
-      if(this.pendingInput)try{await awaitNativeOperation(this.pendingInput.completion,'NATIVE_PRINT_INPUT_UNSETTLED');}catch(error){failure??=error;}
-      try{await awaitNativeOperation(Promise.allSettled(this.pendingEvents),'SESSION_EVENTS_UNSETTLED');}catch(error){failure??=error;}
-      this.info.status=failure?'interrupted':'closed';this.info.captureActive=false;this.info.closeReason=reason;await saveInfo(this.info);
-      if(!failure)await removeSessionMarker(this.info);
+      if(this.pendingInput)try{this.closePhase('pending-input-settle');await awaitNativeOperation(this.pendingInput.completion,'NATIVE_PRINT_INPUT_UNSETTLED');}catch(error){failure??=error;}
+      try{this.closePhase('events-settle');await awaitNativeOperation(Promise.allSettled(this.pendingEvents),'SESSION_EVENTS_UNSETTLED');}catch(error){failure??=error;}
+      this.info.status=failure?'interrupted':'closed';this.info.captureActive=false;this.info.closeReason=reason;
+      this.closePhase('journal-save');await saveInfo(this.info);
+      if(!failure){this.closePhase('marker-remove');await removeSessionMarker(this.info);}
       this.options.onClosed?.();if(failure)throw failure;
-    })();return this.closing;
+    })().then(()=>{this.closePhase('closed');attempt.resolve();},error=>{this.closePhase('failed');attempt.reject(error);});
+    return this.closing;
+  }
+  private closePhase(phase:SessionClosePhase){
+    try{void Promise.resolve(this.options.onClosePhase?.(phase)).catch(()=>{});}catch{}
   }
 }
 

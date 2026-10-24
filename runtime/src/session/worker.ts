@@ -1,4 +1,5 @@
 import {createServer,type Socket} from 'node:net';
+import {writeSync} from 'node:fs';
 import {chmod,unlink} from 'node:fs/promises';
 import {join} from 'node:path';
 import {SessionRuntime} from './runtime.ts';
@@ -23,7 +24,12 @@ try{
   const info=await readJson<SessionInfo>(infoPath(directory));
   if(!info.workerToken||process.argv[3]!==info.workerToken)throw new SessionError('SESSION_WORKER_IDENTITY_MISMATCH');
   await retainWorkerIdentity(info);await saveInfo(info);
-  runtime=await SessionRuntime.open(config,info,{onClosed:()=>{if(!stopping)setImmediate(()=>{void shutdown('runtime-closed');});}});
+  runtime=await SessionRuntime.open(config,info,{
+    onClosed:()=>{if(!stopping)setImmediate(()=>{void shutdown('runtime-closed');});},
+    // stderr is the retained worker.log descriptor. Flush each content-free
+    // boundary before entering its operation, even if that operation stalls.
+    onClosePhase:phase=>{writeSync(2,JSON.stringify({event:'session-close-phase',phase,at:timestamp()})+'\n');},
+  });
   const owned=runtime;
   server=createServer(socket=>{
     connections.add(socket);socket.once('close',()=>connections.delete(socket));

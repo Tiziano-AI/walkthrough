@@ -387,6 +387,14 @@ pointer/input evidence and marks. Inspect the returned stopped take before
 selecting it. In-flight bytes may be unavailable after process loss; do not
 promote an unfinished recording into a completed source.
 
+If recorder start fails, the original session becomes `interrupted`: a rejected
+start does not establish that recording stopped. Rejoin the same capture
+operation ID to read its retained error, then close that original session before
+any further observation, input or capture. Do not remove a guessed slate, retry
+start under a new ID or treat the failure as proof that no recorder started.
+Pre-dispatch refusals, such as an already active take, do not interrupt an
+otherwise usable session.
+
 If stop failed after the recorder finished, close that original session, then
 run `capture recover --project <path> --take <failed-take-id> --json`. Recovery
 qualifies the same media and calibration offline and enables ordinary sealing;

@@ -47,6 +47,10 @@ those of transitive and native optional dependencies. Principal dependencies:
 | mime-types | 3.0.2 | MIT |
 | Remotion, bundler and renderer | 4.0.538 | Remotion license |
 
+The lockfile overrides Remotion's transitive Zod selection to **4.6.6** (MIT),
+which fixes [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
+This does not change the exact renderer versions or their checked patches.
+
 The browser downloaded by Playwright has its own notices and third-party
 licenses. Node.js, external FFmpeg and Voices are separately installed
 prerequisites, not bundled under Walkthrough's license. Voices models and
