@@ -22,8 +22,7 @@ Earlier direct-source checks had not qualified the installed launcher boundary.
 Version 0.4.3 removes only that added sandbox toggle, retaining the patched
 browser, existing Seatbelt network profiles, routing and process custody.
 Playwright's default means the Chromium internal sandbox is disabled; the
-[security limits](SECURITY.md#browser-runtime) remain explicit. Candidate
-qualification through the packaged public launcher is still required.
+[security limits](SECURITY.md#browser-runtime) remain explicit.
 
 Observed source qualification on 27 October 2026 used macOS arm64 and Node
 24.22.1. TypeScript checking passed, and the selected serial browser identity,
@@ -34,6 +33,22 @@ capture, sealing and closed process-group absence. A separate public launcher
 preflight observed native OS non-loopback TCP denial independently of browser
 routing. This selected gate is not a full-suite run or an installed-release
 qualification.
+
+Bootstrap-candidate qualification on that host prepared the committed correction
+`a90707d` through the public installer in an isolated home. Its independent
+launcher selected prepared release `0.4.3-76e0dec9a25a1062` and CfT
+156.0.8078.47, outside the source checkout. Both `loopback-only` and `web`
+completed public open, observe, trusted native input, calibrated capture,
+settled before/after marks, source sealing and close. The retained 3200×1800
+sources visibly contained the unchanged fixture and actual trusted-click
+response; the source integrity checks passed. Both exact worker groups were
+absent after closure. The public loopback preflight independently observed
+native OS non-loopback TCP denial; browser routing alone did not establish it.
+
+This qualifies that synthetic packaged consumer and the restored launch path,
+not complete-film quality, real-product authorization or equivalence with
+Chromium's disabled internal sandbox. No existing user CLI or native plugin
+selection changed, no audio inference ran and no model was acquired.
 
 ## 0.4.2 browser security qualification
 
