@@ -169,9 +169,11 @@ async function pluginDiscovery(path,p,receipt){
 }
 async function browserStore(p){
   await parents(p,join(p.browsers,'probe'),true);
+  // This existing directory-admission identity survives downloader changes;
+  // the release's browserQualification alone selects the browser inside it.
   const marker=join(p.browsers,'.walkthrough-store.json'),expected={schemaVersion:1,product:'walkthrough',owner:'pinned-playwright-registry'};
   const existing=await readJson(marker);
-  if(existing){if(!equal(existing,expected))fail('INSTALL_BROWSER_STORE_FOREIGN','Preserve the unrecognized browser-store owner. The installer never runs Playwright cache maintenance in an unowned store.');return;}
+  if(existing){if(!equal(existing,expected))fail('INSTALL_BROWSER_STORE_FOREIGN','Preserve the unrecognized browser-store owner. The installer never acquires browsers in an unowned store.');return;}
   if((await readdir(p.browsers)).length)fail('INSTALL_BROWSER_STORE_FOREIGN','The product browser directory contains unowned bytes. Resolve their owner before acquisition.');
   await writeFile(marker,JSON.stringify(expected)+'\n',{flag:'wx',mode:0o644});
 }

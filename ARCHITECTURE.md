@@ -4,9 +4,9 @@
 
 Walkthrough combines native plugin guidance and an independent executable
 runtime. The agent supplies product and editorial judgment. One generic
-Playwright-owned browser supplies real input and recording; sealed local sources
-supply offline composition. There is no second planner or product-integration
-framework.
+Playwright-controlled, product-owned browser supplies real input and recording;
+sealed local sources supply offline composition. There is no second planner
+or product-integration framework.
 
 ```mermaid
 flowchart LR
@@ -42,7 +42,7 @@ by explicitly acquiring exact production dependencies with generic lifecycle
 scripts disabled, applying qualified patches and acquiring the pinned browser.
 Activation follows verification inside the same recoverable transaction.
 
-The browser store is Walkthrough-owned and shared by revision across its
+The browser store is Walkthrough-owned and shared by exact CfT version across its
 releases. Node 24, npm, FFmpeg/ffprobe and Voices are external installations,
 resolved explicitly rather than through a mandatory Homebrew path. Production
 does not install or download dependencies. The C toolchain is a release-build

@@ -7,6 +7,7 @@ import {Failure,type LocalTools} from './contracts.ts';
 import {fileDigest,sha256} from './files.ts';
 import {runtimePaths} from './runtime-paths.ts';
 import {localEnvironment,qualifiedNode} from './environment.ts';
+import {qualifiedBrowserVersion} from './browser-qualification.ts';
 import {resolveLocalTools} from './toolchain.ts';
 import {verifyLicense} from './license.ts';
 import {inspectAudioReadiness} from './audio-readiness.ts';
@@ -65,7 +66,7 @@ export async function filmPreflight(input:{narration:boolean;signal?:AbortSignal
   await check('tools',async()=>{
     const version=(path:string,args:string[])=>execFileSync(path,args,{encoding:'utf8',timeout:10000,env:localEnvironment(),stdio:['ignore','pipe','pipe']}).split('\n')[0];
     const node=version(localTools.nodePath,['--version']),browser=version(localTools.browserPath,['--version']);
-    if(!qualifiedNode(node)||!browser.includes('156.0.8078.4'))throw Error();
+    if(!qualifiedNode(node)||!qualifiedBrowserVersion(browser))throw Error();
     return {node,browser,ffmpeg:version(localTools.ffmpegPath,['-version']),ffprobe:version(localTools.ffprobePath,['-version'])};
   });
   await check('renderer',async()=>{

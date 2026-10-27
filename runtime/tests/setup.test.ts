@@ -26,7 +26,7 @@ async function fixture(t: { after: (body: () => void | Promise<void>) => void })
     await put(path, `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(typeof output === 'string' ? output : JSON.stringify(output))});\n`);
     await chmod(path, 0o700); return path;
   };
-  const tools: LocalTools = { nodePath: process.execPath, browserPath: await executable('browser', 'Google Chrome for Testing 156.0.8078.4'),
+  const tools: LocalTools = { nodePath: process.execPath, browserPath: await executable('browser', 'Google Chrome for Testing 156.0.8078.47'),
     ffmpegPath: await executable('ffmpeg', 'ffmpeg version synthetic'), ffprobePath: await executable('ffprobe', 'ffprobe version synthetic') };
   const voiceId = 'studio-reader', hub = join(root, 'shared-hub'), libraryPath = join(root, 'shared-library');
   const tree = '[{"type":"file","path":"model.safetensors","size":4}]';
@@ -161,7 +161,7 @@ test('setup inspect keeps absence separate from drift and does not create operat
   await f.executable('voices', { ...f.doctor, runtime: { ...f.doctor.runtime, source_sha256: sha256('updated') } });
   const drift = await setupInspect({}, f.dependencies);
   assert.equal(drift.audio.status, 'runtime-drift'); assert.equal(drift.checks.find(check => check.id === 'audio-runtime')?.status, 'changed');
-  await f.executable('browser', 'Google Chrome for Testing 156.0.8078.4\nchanged binary');
+  await f.executable('browser', 'Google Chrome for Testing 156.0.8078.47\nchanged binary');
   const toolDrift = await setupInspect({}, f.dependencies);
   assert.equal(toolDrift.checks.find(check => check.id === 'prerequisites')?.status, 'changed');
 });

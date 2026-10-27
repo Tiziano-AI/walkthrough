@@ -8,8 +8,8 @@ The bootstrap release includes Walkthrough's own source, lockfile, patch
 instructions and compiled process reader. It does **not** include npm package
 bytes, a browser, FFmpeg, Voices, voice references or model weights. Explicit
 installation acquires the locked production npm dependencies and the selected
-Playwright browser from their upstream distributors. No such acquisition runs
-during film production.
+Chrome for Testing browser from their upstream distributors. No such acquisition
+runs during film production.
 
 ## Renderer
 
@@ -43,6 +43,7 @@ those of transitive and native optional dependencies. Principal dependencies:
 | Component | Version | Upstream license |
 | --- | --- | --- |
 | Playwright and Playwright Core | 1.64.1 | Apache-2.0 |
+| @puppeteer/browsers (explicit CfT acquisition only) | 3.2.6 | Apache-2.0 |
 | React and React DOM | 19.3.1 | MIT |
 | mime-types | 3.0.2 | MIT |
 | Remotion, bundler and renderer | 4.0.538 | Remotion license |
@@ -51,8 +52,8 @@ The lockfile overrides Remotion's transitive Zod selection to **4.6.6** (MIT),
 which fixes [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
 This does not change the exact renderer versions or their checked patches.
 
-The browser downloaded by Playwright has its own notices and third-party
-licenses. Node.js, external FFmpeg and Voices are separately installed
+The browser downloaded from Google by the pinned CfT installer has its own
+notices and third-party licenses. Node.js, external FFmpeg and Voices are separately installed
 prerequisites, not bundled under Walkthrough's license. Voices models and
 operator-selected voices keep their own terms; no personal voice asset is
 included in this release.

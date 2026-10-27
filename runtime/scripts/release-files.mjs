@@ -2,6 +2,7 @@ import {createHash} from 'node:crypto';
 import {createReadStream} from 'node:fs';
 import {cp,lstat,readFile,readdir,readlink,realpath} from 'node:fs/promises';
 import {dirname,isAbsolute,join,relative,resolve,sep} from 'node:path';
+export {browserQualification} from '../src/core/browser-qualification.ts';
 
 export const hash=value=>createHash('sha256').update(value).digest('hex');
 export const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -10,7 +11,6 @@ export const fail=(code,recovery)=>{throw failure(code,recovery);};
 export const requiredInputSchemas=['project-brief','session-action','action-resolution','capture-start','capture-mark','capture-seal','film-edit'];
 export const requiredProcessReaderFiles=['scripts/provision-session.mjs','src/session/native/process-reader.c','native/walkthrough-process-reader','native/process-reader.json'];
 export const nativePackages=['@remotion/compositor-darwin-arm64','@rspack/binding-darwin-arm64','@esbuild/darwin-arm64'];
-export const browserQualification={packageVersion:'1.64.1',revision:'1248',version:'156.0.8078.4',executable:'chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'};
 // Identify the owned bytes actually shipped, independent of checkout location or
 // Git availability/dirty state. The complete release inventory separately covers
 // production dependencies. This makes no claim about a clean Git commit.
@@ -53,7 +53,7 @@ export async function verifyRelease(root){
   const bytes=await readFile(manifestPath),manifest=JSON.parse(bytes);
   if(manifest.schemaVersion!==2||!['bootstrap','prepared'].includes(manifest.kind)||manifest.product!=='walkthrough'||!/^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/.test(manifest.version)||manifest.platform!=='darwin'||manifest.arch!=='arm64'||!Array.isArray(manifest.files))fail('RELEASE_MANIFEST_INVALID','The release identity is invalid or not a macOS arm64 bootstrap/prepared release.');
   if(!equal(await inventory(root,{exclude:['release.json']}),manifest.files))fail('RELEASE_INTEGRITY_FAILED','Release bytes differ from release.json. Restore the exact archive; do not repair installed files in place.');
-  for(const required of ['bin/walkthrough.mjs','src/cli.ts','src/command-help.ts','src/core/runtime-paths.ts','skills/walkthrough/SKILL.md','scripts/install-local.mjs','scripts/release-files.mjs','scripts/prepare-release.mjs','scripts/provision-renderer.ts','scripts/loopback-only.sb','README.md','package.json','package-lock.json',...requiredProcessReaderFiles,...requiredInputSchemas.map(name=>`docs/schemas/${name}.schema.json`)])if(!manifest.files.some(f=>f.path===required&&f.kind==='file'))fail('RELEASE_INCOMPLETE',`The release lacks ${required}. Rebuild the release package.`);
+  for(const required of ['bin/walkthrough.mjs','src/cli.ts','src/command-help.ts','src/core/runtime-paths.ts','src/core/browser-qualification.ts','skills/walkthrough/SKILL.md','scripts/install-local.mjs','scripts/release-files.mjs','scripts/prepare-release.mjs','scripts/install-browser.mjs','scripts/provision-renderer.ts','scripts/loopback-only.sb','README.md','package.json','package-lock.json',...requiredProcessReaderFiles,...requiredInputSchemas.map(name=>`docs/schemas/${name}.schema.json`)])if(!manifest.files.some(f=>f.path===required&&f.kind==='file'))fail('RELEASE_INCOMPLETE',`The release lacks ${required}. Rebuild the release package.`);
   if(manifest.kind==='bootstrap'&&manifest.files.some(f=>f.path==='node_modules'||f.path.startsWith('node_modules/')))fail('RELEASE_BOOTSTRAP_REDISTRIBUTION','Bootstrap archives contain owned inputs only, not acquired dependencies.');
   if(manifest.kind==='prepared'&&!/^[a-f0-9]{64}$/.test(manifest.bootstrapDigest))fail('RELEASE_PREPARATION_INVALID','The prepared closure must identify its admitted bootstrap.');
   let processReader;try{processReader=JSON.parse(await readFile(join(root,'native/process-reader.json'),'utf8'));}catch{fail('RELEASE_PROCESS_READER_INVALID','The packaged process reader manifest is unreadable. Rebuild through explicit release setup.');}

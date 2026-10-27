@@ -35,9 +35,11 @@ async function fixture(t:{after:(fn:()=>Promise<void>)=>void}){
     'runtime/src/cli.ts':'export const committedRuntime = "runtime source";\n',
     'runtime/src/command-help.ts':'export const committedHelp = "runtime help";\n',
     'runtime/src/core/runtime-paths.ts':'export const committedPaths = "runtime paths";\n',
+    'runtime/src/core/browser-qualification.ts':await readFile(new URL('../src/core/browser-qualification.ts',import.meta.url),'utf8'),
     'runtime/scripts/install-local.mjs':'// Synthetic package fixture; not executed.\n',
     'runtime/scripts/release-files.mjs':'// Synthetic package fixture; not executed.\n',
     'runtime/scripts/prepare-release.mjs':'// Synthetic package fixture; not executed.\n',
+    'runtime/scripts/install-browser.mjs':'// Synthetic package fixture; not executed.\n',
     'runtime/scripts/provision-renderer.ts':'// Synthetic package fixture; not executed.\n',
     'runtime/scripts/loopback-only.sb':'(version 1)\n',
     // Exercise the real package-build seam, not a fabricated reader manifest.
@@ -68,7 +70,7 @@ async function assertMappedBootstrap(result:{releasePath:string;archivePath:stri
   assert.equal(manifest.kind,'bootstrap');assert.equal(manifest.version,'0.4.0');
   const expected=Object.entries(entries).filter(([path])=>
     path.startsWith('runtime/bin/')||path.startsWith('runtime/src/')||path.startsWith('runtime/docs/schemas/')
-    ||['runtime/package.json','runtime/package-lock.json','runtime/scripts/install-local.mjs','runtime/scripts/release-files.mjs','runtime/scripts/prepare-release.mjs','runtime/scripts/provision-renderer.ts','runtime/scripts/provision-session.mjs','runtime/scripts/loopback-only.sb'].includes(path)
+    ||['runtime/package.json','runtime/package-lock.json','runtime/scripts/install-local.mjs','runtime/scripts/release-files.mjs','runtime/scripts/prepare-release.mjs','runtime/scripts/install-browser.mjs','runtime/scripts/provision-renderer.ts','runtime/scripts/provision-session.mjs','runtime/scripts/loopback-only.sb'].includes(path)
     ||path.startsWith('skills/walkthrough/')||['README.md','LICENSE','THIRD_PARTY_NOTICES.md','VISION.md','ARCHITECTURE.md','QUALITY.md','SECURITY.md','docs/browser-authoring.md'].includes(path));
   const expectedFiles=expected.map(([path])=>path.startsWith('runtime/')?path.slice('runtime/'.length):path);
   assert.deepEqual(manifest.files.filter((entry:{kind:string})=>entry.kind==='file').map((entry:{path:string})=>entry.path).sort(),[...expectedFiles,'native/walkthrough-process-reader','native/process-reader.json'].sort());

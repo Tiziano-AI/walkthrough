@@ -23,11 +23,13 @@ async function fixture(version='0.2.0'){
     // source disappears; a stand-in help module would hide missing payloads.
     'src/audio/provision.ts':await readFile(new URL('../src/audio/provision.ts',import.meta.url),'utf8'),
     'src/core/toolchain.ts':await readFile(new URL('../src/core/toolchain.ts',import.meta.url),'utf8'),
+    'src/core/browser-qualification.ts':await readFile(new URL('../src/core/browser-qualification.ts',import.meta.url),'utf8'),
     'src/core/contracts.ts':await readFile(new URL('../src/core/contracts.ts',import.meta.url),'utf8'),
     'src/core/runtime-paths.ts':await readFile(new URL('../src/core/runtime-paths.ts',import.meta.url),'utf8'),
     'scripts/install-local.mjs':await readFile(new URL('../scripts/install-local.mjs',import.meta.url),'utf8'),
     'scripts/release-files.mjs':await readFile(new URL('../scripts/release-files.mjs',import.meta.url),'utf8'),
     'scripts/prepare-release.mjs':await readFile(new URL('../scripts/prepare-release.mjs',import.meta.url),'utf8'),
+    'scripts/install-browser.mjs':'// Synthetic acquisition fixture; not executed for prepared releases.\n',
     'scripts/provision-renderer.ts':'export {};\n',
     'scripts/loopback-only.sb':'(version 1)\n',
     'scripts/provision-session.mjs':'export {};\n','src/session/native/process-reader.c':'/* Synthetic package fixture; never executed. */\n',
@@ -52,17 +54,18 @@ async function bootstrapFixture(mode='success'){
   for(const name of files.nativePackages)lock.packages[`node_modules/${name}`]={version:'1.0.0',optional:true,integrity:'sha512-synthetic-fixture'};
   await writeFile(join(f.release,'package-lock.json'),JSON.stringify(lock));
   const browserScript=`import {mkdir,writeFile,chmod,appendFile} from 'node:fs/promises';import {join,dirname} from 'node:path';
-    await appendFile(${JSON.stringify(log)},JSON.stringify({command:'browser',cwd:process.cwd(),args:process.argv.slice(2),root:process.env.PLAYWRIGHT_BROWSERS_PATH})+'\\n');
-    const target=join(process.env.PLAYWRIGHT_BROWSERS_PATH,${JSON.stringify(files.browserQualification.executable)});await mkdir(dirname(target),{recursive:true});await writeFile(target,'Synthetic browser; never executed.');await chmod(target,0o755);`;
+    await appendFile(${JSON.stringify(log)},JSON.stringify({command:'browser',cwd:process.cwd(),args:process.argv.slice(2),root:process.argv[2]})+'\\n');
+    const target=join(process.argv[2],${JSON.stringify(files.browserQualification.executable)});await mkdir(dirname(target),{recursive:true});await writeFile(target,'#!/bin/sh\\necho "Google Chrome for Testing ${files.browserQualification.version}"\\n');await chmod(target,0o755);`;
+  await writeFile(join(f.release,'scripts/install-browser.mjs'),browserScript);
   await writeFile(npm,`import {mkdir,writeFile,appendFile} from 'node:fs/promises';import {join} from 'node:path';
     if(process.argv.includes('--version')){console.log('11.0.0');process.exit(0);}
     await appendFile(${JSON.stringify(log)},JSON.stringify({command:'npm',cwd:process.cwd(),args:process.argv.slice(2)})+'\\n');
     if(${JSON.stringify(mode)}==='failure')process.exit(71);
     if(${JSON.stringify(mode)}==='hold'){while(!await import('node:fs/promises').then(fs=>fs.stat(${JSON.stringify(join(f.root,'continue'))}).then(()=>true,()=>false)))await new Promise(resolve=>setTimeout(resolve,20));}
     for(const name of ${JSON.stringify(files.nativePackages)}){const root=join(process.cwd(),'node_modules',name);await mkdir(root,{recursive:true});await writeFile(join(root,'package.json'),JSON.stringify({name,version:'1.0.0'}));}
-    const core=join(process.cwd(),'node_modules/playwright-core'),pw=join(process.cwd(),'node_modules/playwright');await mkdir(core,{recursive:true});await mkdir(pw,{recursive:true});
-    await writeFile(join(core,'package.json'),JSON.stringify({version:'1.64.1'}));await writeFile(join(core,'browsers.json'),JSON.stringify({browsers:[{name:'chromium',revision:'1248',browserVersion:'156.0.8078.4'}]}));
-    await writeFile(join(pw,'package.json'),JSON.stringify({type:'module'}));await writeFile(join(pw,'cli.js'),${JSON.stringify(browserScript)});
+    const core=join(process.cwd(),'node_modules/playwright-core'),pw=join(process.cwd(),'node_modules/@puppeteer/browsers');await mkdir(core,{recursive:true});await mkdir(pw,{recursive:true});
+    await writeFile(join(core,'package.json'),JSON.stringify({version:'1.64.1'}));
+    await writeFile(join(pw,'package.json'),JSON.stringify({version:'3.2.6'}));
   `);
   const manifest=JSON.parse(await readFile(manifestPath,'utf8'));delete manifest.bootstrapDigest;manifest.kind='bootstrap';manifest.files=await files.inventory(f.release,{exclude:['release.json']});manifest.source=files.releaseSource(manifest.files);await writeFile(manifestPath,JSON.stringify(manifest));
   return {...f,npm,log};
@@ -85,8 +88,8 @@ test('explicit bootstrap preparation seals dependencies and registers the stable
     assert.ok(release.manifest.files.some((entry:{path:string})=>entry.path.startsWith('node_modules/')));
     const commands=(await readFile(f.log,'utf8')).trim().split('\n').map(line=>JSON.parse(line));
     assert.deepEqual(commands[0].args,['ci','--omit=dev','--include=optional','--ignore-scripts','--no-audit','--no-fund']);
-    assert.equal(commands[1].cwd,result.releasePath,'Playwright must register the stable final package, never staging.');
-    assert.equal(commands[1].root,p.browsers);assert.deepEqual(commands[1].args,['install','chromium','--no-shell']);
+    assert.equal(commands[1].cwd,result.releasePath,'Browser acquisition must use the stable final package, never staging.');
+    assert.equal(commands[1].root,p.browsers);assert.deepEqual(commands[1].args,[p.browsers]);
     const tools=JSON.parse(await readFile(join(result.releasePath,'runtime-tools.json'),'utf8'));
     assert.deepEqual(tools.tools,{nodePath:selected.node,browserPath:join(p.browsers,files.browserQualification.executable),ffmpegPath:selected.ffmpeg,ffprobePath:selected.ffprobe});
     assert.equal(JSON.parse(await readFile(p.receipt,'utf8')).nodePath,selected.node);

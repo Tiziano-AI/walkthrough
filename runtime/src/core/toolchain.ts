@@ -3,6 +3,7 @@ import {homedir} from 'node:os';
 import {delimiter,isAbsolute,join,resolve} from 'node:path';
 import {Failure,type LocalTools} from './contracts.ts';
 import {runtimePaths} from './runtime-paths.ts';
+import {browserQualification} from './browser-qualification.ts';
 
 export type ToolchainSelection={schemaVersion:1;tools:LocalTools};
 export const toolchainSelectionPath=()=>join(runtimePaths().configRoot,'toolchain.json');
@@ -36,7 +37,7 @@ function onPath(name:string):string {
 /** Discovery is a setup candidate, not silent acceptance of changed identities. */
 export function discoverLocalTools():LocalTools {
   return {nodePath:process.execPath,
-    browserPath:join(homedir(),'.local/share/walkthrough/browsers/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'),
+    browserPath:join(homedir(),'.local/share/walkthrough/browsers',browserQualification.executable),
     ffmpegPath:onPath('ffmpeg'),ffprobePath:onPath('ffprobe')};
 }
 

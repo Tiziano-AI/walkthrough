@@ -178,6 +178,26 @@ Remotion or its FFmpeg binaries; installation acquires them upstream. See
 [third-party notices](THIRD_PARTY_NOTICES.md). A local installation or source
 license does not grant rights to publish application data, media or voices.
 
+## Browser runtime
+
+The reviewed browser identity lives in
+`runtime/src/core/browser-qualification.ts`: Chrome for Testing 156.0.8078.47,
+controlled by Playwright 1.64.1. The explicit installer verifies the SHA-256 of
+the [versioned official metadata](https://googlechromelabs.github.io/chrome-for-testing/156.0.8078.47.json)
+before the locked `@puppeteer/browsers` downloader acquires that exact version
+from Google's versioned CfT URLs. This pins metadata identity, not an independently
+published archive SHA-256. Setup and preflight compare the complete reported
+browser version, not a substring; no moving channel or personal Chrome fallback
+is admitted. Native Chromium sandboxing is enabled in the authoring session.
+
+Google's [Chrome 156 security release](https://chromereleases.googleblog.com/2026/10/stable-channel-update-for-desktop_02018666648.html)
+postdates the 156.0.8078.4 build bundled with Playwright 1.64.1. The selected
+stable build includes the published security fixes; this is not a claim that
+every listed CVE affected that earlier prerelease. An npm audit alone cannot
+establish browser safety. Future browser updates must review the exact official
+metadata, change its version and digest together, and rerun synthetic capture
+and renderer qualification before publication or installation.
+
 ## Retention and incidents
 
 Projects, failed occurrences, diagnostics and audio may be sole useful copies.

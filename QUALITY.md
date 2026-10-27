@@ -10,6 +10,42 @@ This document defines acceptance. It does not declare that every supported
 journey or quality gate has passed. A release's recorded observations must name
 the actual host, installed artifact, source and result tested.
 
+## 0.4.2 browser security qualification
+
+This maintenance pins Chrome for Testing 156.0.8078.47 independently of
+Playwright 1.64.1, using the locked upstream CfT downloader 3.2.6 only during
+explicit preparation. Acquisition checks the reviewed versioned metadata;
+that digest is not an independently published archive SHA-256. Setup and
+preflight require the exact reported version, and authoring enables native
+Chromium sandboxing. [Security](SECURITY.md) describes the selection and limits.
+
+Observed source qualification on 27 October 2026 used macOS arm64,
+Node 24.22.1 and an isolated browser/toolchain selection, without activating a
+user installation:
+
+- TypeScript checking passed. The selected serial browser-identity, setup,
+  package-install and package-release gate passed 47 tests. After deriving the
+  package preparation identity from its single owner, the affected browser and
+  packaging gate passed all 7 tests. These overlapping gates are not a full
+  suite run. The resolved lockfile audit reports zero known vulnerabilities;
+  that does not scan browser bytes or establish absence of compromise.
+- The real acquisition helper verified live official metadata and selected
+  the exact scratch-owned browser. All 12 scrollbar regressions and all 3
+  synthetic renderer integrations passed with that browser, retaining source
+  frames, PCM timing, captions and camera behavior.
+- An initial repeated-take capture refused startup with
+  `CAPTURE_CLOCK_UNCERTAIN` and stopped its recorder: the measured uncertainty
+  exceeded the existing admission limit. Its cause is unestablished. An
+  isolated rerun passed both repeated takes and the public session capture
+  path with native input, a calibrated retained source and sealing. Those
+  passes establish a usable synthetic capture, not a causal repair of the
+  earlier refusal. Clock tolerances were not weakened.
+
+These are source and synthetic consumer checks. They do not establish a
+published archive, refreshed native plugin, activated installation, new author
+trial or complete-film viewing/listening acceptance. No real product account
+or historical production was used.
+
 ## 0.4.1 maintenance qualification
 
 The maintenance updates the direct runtime and development

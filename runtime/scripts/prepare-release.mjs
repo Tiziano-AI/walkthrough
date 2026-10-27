@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {mkdir,readFile,realpath,writeFile} from 'node:fs/promises';
 import {dirname,join,resolve} from 'node:path';
 import {browserQualification,equal,fail,fileHash,hash,inventory,nativePackages,releaseSource,stat,verifyRelease} from './release-files.mjs';
+import {qualifiedBrowserVersion} from '../src/core/browser-qualification.ts';
 
 export async function preparationProcesses(reader){
   const info=await stat(reader.path);
@@ -61,9 +62,8 @@ export async function verifyPreparedDependencies(root){
     if(!expected?.integrity||actual?.version!==expected.version)fail('INSTALL_NATIVE_DEPENDENCY_MISSING',`Explicit npm preparation must retain the locked optional native package ${name}. No runtime acquisition is permitted.`);
   }
   const playwright=JSON.parse(await readFile(join(root,'node_modules/playwright-core/package.json'),'utf8'));
-  const browsers=JSON.parse(await readFile(join(root,'node_modules/playwright-core/browsers.json'),'utf8'));
-  const chromium=browsers.browsers?.find(browser=>browser.name==='chromium');
-  if(playwright.version!==browserQualification.packageVersion||chromium?.revision!==browserQualification.revision||chromium?.browserVersion!==browserQualification.version)fail('INSTALL_BROWSER_QUALIFICATION_CHANGED','The locked Playwright browser identity differs from the qualified Chromium. Deliberately qualify that change before packaging.');
+  const installer=JSON.parse(await readFile(join(root,'node_modules/@puppeteer/browsers/package.json'),'utf8'));
+  if(playwright.version!==browserQualification.packageVersion||installer.version!==browserQualification.installerVersion)fail('INSTALL_BROWSER_QUALIFICATION_CHANGED','The locked Playwright or CfT installer identity changed. Deliberately qualify that change before packaging.');
 }
 /** Explicit installer preparation only. Authoring never calls this module. */
 export async function prepareRelease({root,runtime,npmPath,home,tools,custody}){
@@ -94,8 +94,10 @@ export async function qualifiedTool(requested,name){
 export async function prepareBrowser({root,runtime,browserRoot,home,custody}){
   await mkdir(browserRoot,{recursive:true,mode:0o755});
   await verifyPreparedDependencies(root);
-  await run(runtime,[join(root,'node_modules/playwright/cli.js'),'install','chromium','--no-shell'],{cwd:root,custody,name:'qualified-browser',env:{...process.env,HOME:home,PATH:`${dirname(runtime)}:/usr/bin:/bin`,PLAYWRIGHT_BROWSERS_PATH:browserRoot}});
+  await run(runtime,[join(root,'scripts/install-browser.mjs'),browserRoot],{cwd:root,custody,name:'qualified-browser',env:{...process.env,HOME:home,PATH:`${dirname(runtime)}:/usr/bin:/bin`}});
   const executable=join(browserRoot,browserQualification.executable),info=await stat(executable);
-  if(!info?.isFile()||!(info.mode&0o111))fail('INSTALL_BROWSER_INCOMPLETE','The pinned Playwright downloader did not produce the qualified browser executable. Preserve preparation and inspect its result.');
+  if(!info?.isFile()||!(info.mode&0o111))fail('INSTALL_BROWSER_INCOMPLETE','The pinned CfT downloader did not produce the qualified browser executable. Preserve preparation and inspect its result.');
+  const version=spawnSync(executable,['--version'],{encoding:'utf8',timeout:10000});
+  if(version.status!==0||!qualifiedBrowserVersion(version.stdout))fail('INSTALL_BROWSER_QUALIFICATION_CHANGED','The acquired browser does not report the exact qualified Chrome for Testing version. Preserve preparation instead of activating it.');
   return executable;
 }

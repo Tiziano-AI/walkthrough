@@ -5,6 +5,7 @@ import {resolveLocalTools} from './toolchain.ts';
 import {verifyCaptureBrowserCustodyPatch} from '../capture/browser-custody.ts';
 import {verifyProcessReader} from '../session/process.ts';
 import {SessionError} from '../session/contracts.ts';
+import {qualifiedBrowserVersion} from './browser-qualification.ts';
 
 export const localTools:LocalTools=resolveLocalTools();
 export async function inspectPrerequisites(input:{phase?:'capture'|'compose'|'all';signal?:AbortSignal}={}){
@@ -16,7 +17,7 @@ export async function inspectPrerequisites(input:{phase?:'capture'|'compose'|'al
     await check('capture-tools',()=>{
       if(!qualifiedNode(process.version))throw new Error('unqualified Node');
       const version=(path:string,args:string[])=>execFileSync(path,args,{encoding:'utf8',timeout:10000,env:localEnvironment(),stdio:['ignore','pipe','pipe']}).split('\n')[0];
-      const browser=version(localTools.browserPath,['--version']);if(!browser.includes('156.0.8078.4'))throw new Error('unqualified Chrome');
+      const browser=version(localTools.browserPath,['--version']);if(!qualifiedBrowserVersion(browser))throw new Error('unqualified Chrome');
       return {node:process.version,browser,ffmpeg:version(localTools.ffmpegPath,['-version']),ffprobe:version(localTools.ffprobePath,['-version'])};
     });
     await check('capture-browser-custody',verifyCaptureBrowserCustodyPatch);

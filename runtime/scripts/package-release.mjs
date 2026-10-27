@@ -3,13 +3,13 @@ import {execFileSync} from 'node:child_process';
 import {chmod,mkdir,realpath,writeFile} from 'node:fs/promises';
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {fail,fileHash,inventory,releaseSource,stat,verifyRelease} from './release-files.mjs';
+import {browserQualification,fail,fileHash,inventory,releaseSource,stat,verifyRelease} from './release-files.mjs';
 
 const runtimeRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 // Public owned inputs only. Historical operational records and broad docs/
 // copies are not release inputs. Git supplies a reviewed committed inventory,
 // never private history or untracked workstation material.
-const runtimeReleasePaths=['bin','src','scripts/install-local.mjs','scripts/release-files.mjs','scripts/prepare-release.mjs','scripts/provision-renderer.ts','scripts/provision-session.mjs','scripts/loopback-only.sb','docs/schemas','package.json','package-lock.json'];
+const runtimeReleasePaths=['bin','src','scripts/install-local.mjs','scripts/release-files.mjs','scripts/prepare-release.mjs','scripts/install-browser.mjs','scripts/provision-renderer.ts','scripts/provision-session.mjs','scripts/loopback-only.sb','docs/schemas','package.json','package-lock.json'];
 const guidanceReleasePaths=['skills/walkthrough','README.md','LICENSE','THIRD_PARTY_NOTICES.md','VISION.md','ARCHITECTURE.md','QUALITY.md','SECURITY.md','docs/browser-authoring.md'];
 export const publicReleasePaths=[...runtimeReleasePaths.map(path=>`runtime/${path}`),...guidanceReleasePaths];
 /** Build owned bootstrap bytes only. No dependency acquisition or redistribution. */
@@ -46,7 +46,7 @@ export async function packageRelease({sourceRoot=runtimeRoot,outputRoot,platform
   await chmod(join(destination,'bin/walkthrough.mjs'),0o755);
   const files=await inventory(destination);
   const manifest={schemaVersion:2,kind:'bootstrap',product:'walkthrough',version:pkg.version,platform:'darwin',arch:'arm64',node:'24.22.1 <= version < 25',
-    preparation:{npm:'ci --omit=dev --include=optional --ignore-scripts --no-audit --no-fund',browser:'playwright 1.64.1 install chromium --no-shell'},
+    preparation:{npm:'ci --omit=dev --include=optional --ignore-scripts --no-audit --no-fund',browser:`@puppeteer/browsers ${browserQualification.installerVersion} install chrome@${browserQualification.version}`},
     externalPrerequisites:['Node >= 24.22.1 on the 24 line with npm','FFmpeg and ffprobe','Installed Voices and selected provision in user state'],
     source:releaseSource(files),files};
   await writeFile(join(destination,'release.json'),JSON.stringify(manifest,null,2)+'\n',{flag:'wx',mode:0o644});

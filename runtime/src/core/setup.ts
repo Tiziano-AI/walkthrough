@@ -11,6 +11,7 @@ import { licensePath, validateLicenseAssertion, verifyLicense, type LicenseAsser
 import { runtimePaths } from './runtime-paths.ts';
 import { readToolchainSelection, resolveLocalTools, toolchainSelectionPath } from './toolchain.ts';
 import { qualifiedNode } from './environment.ts';
+import { browserQualification, qualifiedBrowserVersion } from './browser-qualification.ts';
 
 type ToolName = keyof LocalTools;
 export type SetupToolIdentities = Record<ToolName, { path: string; sha256: string; version: string }>;
@@ -111,9 +112,9 @@ export async function inspectSetupTools(tools: LocalTools, signal?: AbortSignal)
   for (const name of toolNames) {
     const path = tools[name], version = (await command(path, [name === 'ffmpegPath' || name === 'ffprobePath' ? '-version' : '--version'], { signal })).trim().split('\n')[0];
     const acceptable = name === 'nodePath' ? qualifiedNode(version)
-      : name === 'browserPath' ? version.includes('156.0.8078.4')
+      : name === 'browserPath' ? qualifiedBrowserVersion(version)
       : version.startsWith(name === 'ffmpegPath' ? 'ffmpeg version ' : 'ffprobe version ');
-    if (!acceptable) throw failure('SETUP_PREREQUISITE_UNQUALIFIED', `The selected ${name} is outside this release's qualified contract. Supply Node 24.22.1 or later on the 24 line, Chrome for Testing 156.0.8078.4 and working FFmpeg/ffprobe executables.`);
+    if (!acceptable) throw failure('SETUP_PREREQUISITE_UNQUALIFIED', `The selected ${name} is outside this release's qualified contract. Supply Node 24.22.1 or later on the 24 line, Chrome for Testing ${browserQualification.version} and working FFmpeg/ffprobe executables.`);
     identities[name] = { path, sha256: await digestFile(path), version };
   }
   return identities;
