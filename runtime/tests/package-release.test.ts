@@ -113,6 +113,14 @@ function tarHeaders(bytes:Buffer){
   return headers;
 }
 
+test('native plugin release versions match the CLI release',async()=>{
+  const runtime=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8'));
+  for(const path of ['../../plugin.json','../../.claude-plugin/plugin.json']){
+    const plugin=JSON.parse(await readFile(new URL(path,import.meta.url),'utf8'));
+    assert.equal(plugin.version,runtime.version,`${path} must declare the released CLI version.`);
+  }
+});
+
 test('native plugin root has no package-manager installation trigger',async()=>{
   for(const name of ['package.json','package-lock.json'])await assert.rejects(stat(new URL('../../'+name,import.meta.url)),{code:'ENOENT'});
 });
