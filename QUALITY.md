@@ -10,14 +10,40 @@ This document defines acceptance. It does not declare that every supported
 journey or quality gate has passed. A release's recorded observations must name
 the actual host, installed artifact, source and result tested.
 
+## 0.4.3 launcher compatibility correction
+
+Version 0.4.2 added Chromium's internal sandbox independently of its browser
+security update. Its installed public launcher failed to open the loopback
+fixture: Chrome reported `sandbox initialization failed: Operation not permitted`
+before any page existed, then terminated. Both page-order diagnostic arms failed
+at that same boundary; closing the last page did not explain the failure.
+Earlier direct-source checks had not qualified the installed launcher boundary.
+
+Version 0.4.3 removes only that added sandbox toggle, retaining the patched
+browser, existing Seatbelt network profiles, routing and process custody.
+Playwright's default means the Chromium internal sandbox is disabled; the
+[security limits](SECURITY.md#browser-runtime) remain explicit. Candidate
+qualification through the packaged public launcher is still required.
+
+Observed source qualification on 27 October 2026 used macOS arm64 and Node
+24.22.1. TypeScript checking passed, and the selected serial browser identity,
+package/install, recorder-start, public-launcher and supervisor-custody gate
+passed all 107 tests without skips. Its real public launcher exercised both
+existing network mandates through observe, trusted native input, calibrated
+capture, sealing and closed process-group absence. A separate public launcher
+preflight observed native OS non-loopback TCP denial independently of browser
+routing. This selected gate is not a full-suite run or an installed-release
+qualification.
+
 ## 0.4.2 browser security qualification
 
 This maintenance pins Chrome for Testing 156.0.8078.47 independently of
 Playwright 1.64.1, using the locked upstream CfT downloader 3.2.6 only during
 explicit preparation. Acquisition checks the reviewed versioned metadata;
 that digest is not an independently published archive SHA-256. Setup and
-preflight require the exact reported version, and authoring enables native
-Chromium sandboxing. [Security](SECURITY.md) describes the selection and limits.
+preflight require the exact reported version. The internal Chromium sandbox
+added in that release failed under the public loopback launcher, as described
+above. [Security](SECURITY.md) describes the current selection and limits.
 
 Observed source qualification on 27 October 2026 used macOS arm64,
 Node 24.22.1 and an isolated browser/toolchain selection, without activating a

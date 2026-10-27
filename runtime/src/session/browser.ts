@@ -10,7 +10,10 @@ export async function openSessionBrowser(input:{profileDirectory:string;executab
   else await verifyCaptureBrowserCustodyPatch();
   if(process.env.WALKTHROUGH_SESSION_WORKER==='1')process.env.WALKTHROUGH_CAPTURE_GROUP_PID=String(process.pid);
   return chromium.launchPersistentContext(input.profileDirectory,{
-    executablePath:input.executablePath??qualifiedBrowserPath(),headless:input.headless??false,chromiumSandbox:true,
+    // Preserve the launcher-owned Seatbelt boundary. Enabling Chromium's own
+    // sandbox broke initialization inside the qualified outer loopback profile.
+    // Playwright's default leaves that separate Chromium sandbox disabled.
+    executablePath:input.executablePath??qualifiedBrowserPath(),headless:input.headless??false,
     // Native filesystem pickers abort in qualified headless Chromium and are
     // outside session input in headed mode. Advertise that capability honestly
     // so applications can select their own download/file-input paths. Disable

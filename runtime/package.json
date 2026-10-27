@@ -1,6 +1,6 @@
 {
   "name": "walkthrough",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": true,
   "license": "MIT",
   "repository": {"type":"git","url":"https://github.com/Tiziano-AI/walkthrough.git"},

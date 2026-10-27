@@ -68,14 +68,14 @@ Ask your agent to help with setup. It can inspect actual prerequisites and
 prepare the configuration; you retain choices about your narrator, license
 eligibility and any installation you have not authorized.
 
-1. Download `walkthrough-0.4.2-darwin-arm64.tar.gz` and its SHA-256 file from
+1. Download `walkthrough-0.4.3-darwin-arm64.tar.gz` and its SHA-256 file from
    [releases](https://github.com/Tiziano-AI/walkthrough/releases). Verify the
    checksum, then extract the archive.
 2. Run the installer from that extracted release:
 
    ```sh
    node scripts/install-local.mjs install \
-     --release /absolute/walkthrough-0.4.2-darwin-arm64 \
+     --release /absolute/walkthrough-0.4.3-darwin-arm64 \
      --node /absolute/stable/path/to/node
    ```
 

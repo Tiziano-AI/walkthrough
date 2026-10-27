@@ -14,13 +14,13 @@ import {writeJson} from '../src/session/journal.ts';
 import {processTable} from '../src/session/process.ts';
 
 const execute=promisify(execFile),program=resolve(import.meta.dirname,'..');
-async function fixture(tools?:LocalTools){
+async function fixture(tools?:LocalTools,network:'web'|'loopback-only'='loopback-only'){
   const directory=await mkdtemp('/private/tmp/wts-public-'),state=join(directory,'state'),project=join(directory,'.walkthrough');
   if(tools){await mkdir(join(directory,'settings'),{mode:0o700});await writeFile(join(directory,'settings','toolchain.json'),JSON.stringify({schemaVersion:1,tools}));}
   const server=createServer((_request,response)=>{response.setHeader('content-type','text/html');response.end('<!doctype html><h1>Public session</h1><button onclick="this.textContent=\'Count 1 trusted \'+event.isTrusted">Count 0</button>');});
   await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
   const url=`http://127.0.0.1:${(server.address() as {port:number}).port}/`;
-  const brief:ProjectBrief={title:'Public loopback session',brief:'Exercise native input',audience:'Test author',mandate:{applicationUrl:url,navigationOrigins:[new URL(url).origin],network:'loopback-only',allowedEffects:'One synthetic counter click.',dataDescription:'Synthetic fixture',inputRoots:[],mediaReview:'agent-reviewable-synthetic',delivery:'local'}};
+  const brief:ProjectBrief={title:`Public ${network} session`,brief:'Exercise native input',audience:'Test author',mandate:{applicationUrl:url,navigationOrigins:[new URL(url).origin],network,allowedEffects:'One synthetic counter click.',dataDescription:'Synthetic fixture',inputRoots:[],mediaReview:'agent-reviewable-synthetic',delivery:'local'}};
   await writeFile(join(directory,'brief.json'),JSON.stringify(brief));
   const cli=async(args:string[],runtime=program)=>{
     let stdout:string,stderr:string,code=0;
@@ -36,28 +36,39 @@ async function fixture(tools?:LocalTools){
   return {directory,state,project,cli,close:async(retain=false)=>{await new Promise<void>(resolve=>server.close(()=>resolve()));if(!retain)await rm(directory,{recursive:true,force:true});}};
 }
 
-test('real public launcher opens, observes, delivers trusted input, inspects and closes under the loopback sandbox',async t=>{
+for(const network of ['loopback-only','web'] as const)test(`real public ${network} launcher opens, observes, captures trusted input, seals and closes`,async t=>{
   const tools=resolveLocalTools();
   tools.browserPath=process.env.WALKTHROUGH_TEST_BROWSER_PATH??tools.browserPath;
   try{await access(tools.browserPath);}catch(error){
     if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;
     t.skip('Install the selected browser or provide an explicit WALKTHROUGH_TEST_BROWSER_PATH. No browser is downloaded.');return;
   }
-  const f=await fixture(tools);let opened=false,failure:unknown;
+  const f=await fixture(tools,network);let opened=false,failure:unknown;
   try{
     const created=await f.cli(['project','create','--path','.walkthrough','--brief','brief.json']);assert.equal(created.code,0,JSON.stringify(created.record));
     const openedResult=await f.cli(['session','open','--project',f.project,'--id','public']);assert.equal(openedResult.code,0,JSON.stringify(openedResult.record));opened=true;
     const identity=openedResult.record.result.processIdentity;assert.ok(identity.startedAt);assert.match(identity.commandSha256,/^[a-f0-9]{64}$/);
     const observation=await f.cli(['observe','--project',f.project,'--session','public']);assert.equal(observation.code,0,JSON.stringify(observation.record));
     const button=observation.record.result.refs.find((element:{name:string})=>element.name==='Count 0');assert.ok(button);
+    const started=await f.cli(['capture','start','--project',f.project,'--session','public','--id','capture-start','--data',JSON.stringify({title:'One native counter response'})]);assert.equal(started.record.result.status,'completed',JSON.stringify(started.record));
+    const beforeMark=await f.cli(['capture','mark','--project',f.project,'--session','public','--id','before-mark','--data',JSON.stringify({title:'Counter before input',settled:true})]);assert.equal(beforeMark.record.result.status,'completed',JSON.stringify(beforeMark.record));
     const action={kind:'click',target:{ref:button.ref}};
     const clicked=await f.cli(['act','--project',f.project,'--session','public','--id','one-click','--data',JSON.stringify(action)]);assert.equal(clicked.record.result.status,'input-completed',JSON.stringify(clicked.record));
     assert.equal((await f.cli(['act','--project',f.project,'--session','public','--id','one-click','--data',JSON.stringify(action)])).record.result.actionId,'one-click');
     const after=await f.cli(['observe','--project',f.project,'--session','public']);assert.ok(after.record.result.refs.some((element:{name:string})=>element.name==='Count 1 trusted true'));
+    const afterMark=await f.cli(['capture','mark','--project',f.project,'--session','public','--id','after-mark','--data',JSON.stringify({title:'Trusted input response',settled:true})]);assert.equal(afterMark.record.result.status,'completed',JSON.stringify(afterMark.record));
+    const stopped=await f.cli(['capture','stop','--project',f.project,'--session','public','--id','capture-stop']);assert.equal(stopped.record.result.status,'completed',JSON.stringify(stopped.record));
+    const take=stopped.record.result.result;assert.equal(take.state,'stopped');assert.equal(take.source.width,3200);assert.equal(take.source.height,1800);
+    assert.ok(take.source.pointerSamples>0);assert.equal(take.marks.total,2);
+    const sealed=await f.cli(['capture','seal','--project',f.project,'--data',JSON.stringify({takeIds:[take.id],artifacts:[]})]);assert.equal(sealed.code,0,JSON.stringify(sealed.record));
+    assert.equal(sealed.record.result.sources,1);assert.equal(sealed.record.result.marks,2);
+    const pointer=await f.cli(['inspect','--project',f.project,'--source-set',sealed.record.result.sourceSetId,'--section','pointer','--source',take.id,'--limit','1000']);assert.equal(pointer.code,0,JSON.stringify(pointer.record));
+    assert.ok(pointer.record.result.items.some((event:{type:string})=>event.type==='down'));
     const inspected=await f.cli(['session','inspect','--project',f.project,'--session','public']);assert.equal(inspected.record.result.live,true);assert.deepEqual(inspected.record.result.session.processIdentity,identity);
     assert.equal((await f.cli(['session','close','--project',f.project,'--session','public'])).record.result.status,'closed');opened=false;
     const retained=await f.cli(['session','inspect','--project',f.project,'--session','public']);assert.equal(retained.record.result.session.status,'closed');
     await assert.rejects(access(join(f.state,'active','public.json')),{code:'ENOENT'});
+    assert.deepEqual((await processTable()).filter(row=>row.pgid===identity.pgid),[],'closed session group has no remaining members');
   }catch(error){failure=error;}
   finally{
     try{if(opened){const closed=await f.cli(['session','close','--project',f.project,'--session','public']);assert.equal(closed.code,0,JSON.stringify(closed.record));}}
@@ -65,6 +76,17 @@ test('real public launcher opens, observes, delivers trusted input, inspects and
     await f.close(!!failure);
   }
   if(failure)throw failure;
+});
+
+test('public local launcher observes an OS non-loopback denial independently of browser routing',async()=>{
+  const f=await fixture(resolveLocalTools());
+  try{
+    // Compose preflight makes a native TCP connect to a reserved non-loopback
+    // address. Only EPERM/EACCES qualifies; timeout or refused routing does not.
+    // Missing isolated audio may make the overall diagnostic not-ready.
+    const doctor=await f.cli(['doctor','--phase','compose']);
+    assert.deepEqual(doctor.record.checks.find((check:{name:string})=>check.name==='network'),{name:'network',ok:true,detail:'external-network-denied'});
+  }finally{await f.close();}
 });
 
 test('public open refuses a missing process reader before reserving or launching a session',async()=>{

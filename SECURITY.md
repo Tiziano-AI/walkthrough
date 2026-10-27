@@ -188,7 +188,23 @@ before the locked `@puppeteer/browsers` downloader acquires that exact version
 from Google's versioned CfT URLs. This pins metadata identity, not an independently
 published archive SHA-256. Setup and preflight compare the complete reported
 browser version, not a substring; no moving channel or personal Chrome fallback
-is admitted. Native Chromium sandboxing is enabled in the authoring session.
+is admitted.
+
+Authoring retains Playwright's default with Chromium's internal process sandbox
+disabled (`--no-sandbox`). Enabling it in 0.4.2 was additional hardening, not a
+requirement for the selected browser security fixes; its initialization failed
+inside the launcher's existing macOS Seatbelt loopback profile. Version 0.4.3
+removes that incompatible toggle without reverting the patched browser or
+changing the existing network mandate, routing or process custody.
+
+The outer `loopback-only` Seatbelt profile denies non-loopback networking; it
+allows ordinary filesystem access and cannot certify a local relay. `web` uses
+the existing allow-default OS profile. Neither mode provides the fine-grained
+renderer/process containment of Chromium's internal sandbox: a native browser
+exploit can inherit the broader local permissions of the authoring process.
+Navigation routing and process custody are not substitutes for that containment.
+This preserves the previous product boundary; it does not claim equivalent
+security to an enabled Chromium sandbox.
 
 Google's [Chrome 156 security release](https://chromereleases.googleblog.com/2026/10/stable-channel-update-for-desktop_02018666648.html)
 postdates the 156.0.8078.4 build bundled with Playwright 1.64.1. The selected
