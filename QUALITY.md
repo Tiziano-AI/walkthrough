@@ -34,16 +34,21 @@ preflight observed native OS non-loopback TCP denial independently of browser
 routing. This selected gate is not a full-suite run or an installed-release
 qualification.
 
-Bootstrap-candidate qualification on that host prepared the committed correction
-`a90707d` through the public installer in an isolated home. Its independent
-launcher selected prepared release `0.4.3-76e0dec9a25a1062` and CfT
-156.0.8078.47, outside the source checkout. Both `loopback-only` and `web`
+The final retained bootstrap candidate was built from commit `39365db`; its
+`walkthrough-0.4.3-darwin-arm64.tar.gz` archive SHA-256 is
+`ab2e1b1acf65986143c8c256c7737506a74fc09b5356864d54216b09bd03bb63`.
+Qualification on that host prepared that exact candidate through the public
+installer in an isolated home. Its independent launcher selected prepared
+release `0.4.3-7f7f9267fcf2e0fa` and CfT 156.0.8078.47, outside the source
+checkout. Both `loopback-only` and `web`
 completed public open, observe, trusted native input, calibrated capture,
 settled before/after marks, source sealing and close. The retained 3200×1800
 sources visibly contained the unchanged fixture and actual trusted-click
 response; the source integrity checks passed. Both exact worker groups were
 absent after closure. The public loopback preflight independently observed
 native OS non-loopback TCP denial; browser routing alone did not establish it.
+The installed candidate and its receipt passed the public installation check.
+Updating this qualification record did not rebuild the retained archive.
 
 This qualifies that synthetic packaged consumer and the restored launch path,
 not complete-film quality, real-product authorization or equivalence with
