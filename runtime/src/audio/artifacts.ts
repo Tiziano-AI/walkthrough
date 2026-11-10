@@ -1,13 +1,15 @@
-import {isAbsolute} from 'node:path';
-import {stableJson,resolveProvisionVoice,type AudioProvision,type CurrentAudioProvision,type AudioLanguage} from './provision.ts';
+import {stableJson,validateAudioRuntime,resolveProvisionVoice,type AudioRuntime,type AudioProvision,type CurrentAudioProvision,type AudioLanguage} from './provision.ts';
 import {validateAlignment} from './captions.ts';
 
+function localRuntime(value:unknown):AudioRuntime{
+  try{return validateAudioRuntime(value);}catch{throw new Error('AUDIO_RUNTIME_IDENTITY_DRIFT');}
+}
 export function verifyRuntime(actual:unknown,manifest:AudioProvision):void{
-  if(stableJson(actual)!==stableJson(manifest.runtime))throw new Error('AUDIO_RUNTIME_IDENTITY_DRIFT');
+  if(stableJson(localRuntime(actual))!==stableJson(localRuntime(manifest.runtime)))throw new Error('AUDIO_RUNTIME_IDENTITY_DRIFT');
 }
 function verifyGenerationRuntime(actual:any,manifest:AudioProvision):void{
-  if(!actual||typeof actual!=='object'||typeof actual.executable!=='string'||!isAbsolute(actual.executable))throw new Error('AUDIO_RUNTIME_IDENTITY_DRIFT');
-  const {executable:_actual,...actualIdentity}=actual,{executable:_current,...currentIdentity}=manifest.runtime;
+  // Retention relaxes the executable locator only, never execution provenance.
+  const {executable:_actual,...actualIdentity}=localRuntime(actual),{executable:_current,...currentIdentity}=localRuntime(manifest.runtime);
   if(stableJson(actualIdentity)!==stableJson(currentIdentity))throw new Error('AUDIO_RUNTIME_IDENTITY_DRIFT');
 }
 export function verifyRenderedArtifact(artifact:any,text:string,manifest:AudioProvision,language:AudioLanguage='English',voiceId?:string):void{

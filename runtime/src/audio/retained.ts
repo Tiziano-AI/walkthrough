@@ -2,7 +2,7 @@ import {constants} from 'node:fs';
 import {readFile,writeFile,mkdir,lstat,realpath,copyFile} from 'node:fs/promises';
 import {isAbsolute,join,resolve} from 'node:path';
 import {digestFile,validateAudioProvision,synthesisIdentity,alignmentIdentity,transcriptionIdentity,audioLanguage,type AudioLanguage} from './provision.ts';
-import {verifyRenderedArtifact,verifyAlignedArtifact,verifyTranscribedArtifact} from './artifacts.ts';
+import {verifyRuntime,verifyRenderedArtifact,verifyAlignedArtifact,verifyTranscribedArtifact} from './artifacts.ts';
 import {audioMetrics} from './wav.ts';
 import {captionCues,vttTime} from './captions.ts';
 import {compareTranscript} from './transcription.ts';
@@ -39,6 +39,7 @@ async function verifiedRetainedNarration(input:RetainedNarrationInput){
   const narration=await receipt(join(input.directory,'narration.json')),provisionPath=await literal(join(input.directory,'provision.json'));
   if(narration.schemaVersion!==1||!Array.isArray(narration.beats)||narration.spokenContentVerified!==false||await digestFile(provisionPath)!==narration.provisionManifestSha256)throw Error('AUDIO_RETAINED_PROVENANCE_MISMATCH');
   const provision=validateAudioProvision(await json(provisionPath)),language=audioLanguage(input.language),voiceId=input.voiceId??narration.voiceId;
+  verifyRuntime(narration.runtime,provision);
   if(narration.voiceId!==voiceId||audioLanguage(narration.language)!==language)return {complete:false as const,voiceId,language,beats:[],narration,provision,provisionPath};
   const beats:Array<{beat:NarrationBeat;directory:string}>=[];
   for(const wanted of input.beats){

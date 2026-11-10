@@ -87,6 +87,23 @@ test('public runtime drift returns fixed keys without runtime values', async t =
   }
 });
 
+test('compute presence is runtime drift, matching explicit local null remains ready', async t => {
+  const f = await fixture(t), local = { ...f.manifest.runtime, compute: null };
+  await f.command(`process.stdout.write(${JSON.stringify(JSON.stringify({ runtime: local }))});`);
+  const appeared = await inspectAudioReadiness(f.path);
+  assert.equal(appeared.status, 'runtime-drift'); assert.deepEqual(appeared.mismatchKeys, ['compute']);
+  await writeFile(f.path, JSON.stringify({ ...f.manifest, runtime: local }));
+  assert.equal((await inspectAudioReadiness(f.path)).status, 'legacy-provision');
+  await f.command(`process.stdout.write(${JSON.stringify(JSON.stringify({ runtime: f.manifest.runtime }))});`);
+  const disappeared = await inspectAudioReadiness(f.path);
+  assert.equal(disappeared.status, 'runtime-drift'); assert.deepEqual(disappeared.mismatchKeys, ['compute']);
+  for (const runtime of [{ ...local, compute: { backend: 'dgx' } }, { ...local, source_scope: 'remote-python-source-at-observation' }]) {
+    await f.command(`process.stdout.write(${JSON.stringify(JSON.stringify({ runtime }))});`);
+    const invalid = await inspectAudioReadiness(f.path);
+    assert.equal(invalid.status, 'unavailable'); assert.equal(invalid.reason, 'invalid-response');
+  }
+});
+
 test('absent or invalid provision never starts the executable', async t => {
   const f = await fixture(t);
   for (const path of ['relative', '', f.path + '\0invalid', `${f.root}/bin/../provision.json`]) {

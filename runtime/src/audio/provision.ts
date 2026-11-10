@@ -10,6 +10,8 @@ export interface AudioRuntime {
   python: string; executable: string; platform: string; voices_version: string;
   source_sha256: string; source_scope: 'installed-python-source-at-observation';
   packages: Record<string, string>; package_scope: 'selected-runtime-dependencies';
+  /** Explicit local execution; absence remains a distinct historical identity. */
+  compute?: null;
 }
 export interface AudioModelFile { path: string; size: number; sha256: string }
 export interface AudioResolverTree { sha256: string; size: number }
@@ -51,18 +53,24 @@ const exactKeys = (value: Record<string, unknown>, keys: readonly string[]) => O
 const nonempty = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= 4096;
 const invalid = (): never => { throw new Error('AUDIO_PROVISION_SCHEMA'); };
 
+/** Only local Voices provenance is admitted, including retained/offline receipts. */
+export function validateAudioRuntime(value: unknown): AudioRuntime {
+  if (!record(value) || !exactKeys(value, ['python', 'executable', 'platform', 'voices_version', 'source_sha256', 'source_scope', 'packages', 'package_scope', ...(Object.hasOwn(value, 'compute') ? ['compute'] : [])])) invalid();
+  const fields = value as Record<string, unknown>;
+  if (!nonempty(fields.python) || !absolute(fields.executable) || !nonempty(fields.platform) || !nonempty(fields.voices_version) || !sha(fields.source_sha256)
+    || fields.source_scope !== 'installed-python-source-at-observation' || fields.package_scope !== 'selected-runtime-dependencies'
+    || (Object.hasOwn(fields, 'compute') && fields.compute !== null)
+    || !record(fields.packages) || !Object.keys(fields.packages).length || Object.entries(fields.packages).some(([name, version]) => !nonempty(name) || !nonempty(version))) invalid();
+  return value as AudioRuntime;
+}
+
 /** Pure shape check shared by readers and the explicit candidate builder. */
 export function validateAudioProvision(value: unknown): AudioProvision {
   if (!record(value) || ![2, 3].includes(value.schemaVersion as number)
     || !exactKeys(value, ['schemaVersion', 'voicesExecutable', 'hubCacheDirectory', 'cacheDirectory', 'runtime', 'models', ...(value.schemaVersion === 2 ? ['voice'] : ['defaultVoiceId', 'voices'])])) invalid();
   const manifest = value as Record<string, unknown>;
   if (!absolute(manifest.voicesExecutable) || !absolute(manifest.hubCacheDirectory) || !absolute(manifest.cacheDirectory)) invalid();
-  const runtime = manifest.runtime;
-  if (!record(runtime) || !exactKeys(runtime, ['python', 'executable', 'platform', 'voices_version', 'source_sha256', 'source_scope', 'packages', 'package_scope'])) invalid();
-  const fields = runtime as Record<string, unknown>;
-  if (!nonempty(fields.python) || !absolute(fields.executable) || !nonempty(fields.platform) || !nonempty(fields.voices_version) || !sha(fields.source_sha256)
-    || fields.source_scope !== 'installed-python-source-at-observation' || fields.package_scope !== 'selected-runtime-dependencies'
-    || !record(fields.packages) || !Object.keys(fields.packages).length || Object.entries(fields.packages).some(([name, version]) => !nonempty(name) || !nonempty(version))) invalid();
+  validateAudioRuntime(manifest.runtime);
   const roles: (keyof typeof AUDIO_MODELS)[] = manifest.schemaVersion === 2 ? ['tts', 'aligner'] : ['tts', 'aligner', 'asr'];
   if (!record(manifest.models) || !exactKeys(manifest.models, roles)) invalid();
   for (const role of roles) {
@@ -289,7 +297,8 @@ export function stableJson(value: unknown): string {
 }
 
 function computationalRuntime(runtime: AudioRuntime) {
-  return { python: runtime.python, platform: runtime.platform, voices_version: runtime.voices_version, source_sha256: runtime.source_sha256, source_scope: runtime.source_scope, packages: runtime.packages, package_scope: runtime.package_scope };
+  const { executable: _executable, ...identity } = validateAudioRuntime(runtime);
+  return identity;
 }
 function modelIdentity(model: AudioModel) {
   // Resolver metadata availability/freshness does not change verified model

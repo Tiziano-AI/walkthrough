@@ -38,7 +38,7 @@ async function fixture(t: { after: (body: () => void | Promise<void>) => void })
   const files = {} as CurrentAudioProvision['voices'][number]['files'];
   for (const name of VOICE_FILES) { await put(join(libraryPath, voiceId, name), name); files[name] = sha256(name); }
   const python = await executable('python', 'synthetic runtime, never executed');
-  const runtime = { python: '3.13.5', executable: python, platform: 'synthetic-platform', voices_version: '0.2.0', source_sha256: sha256('source'), source_scope: 'installed-python-source-at-observation' as const, packages: { voices: '0.2.0', mlx: 'synthetic' }, package_scope: 'selected-runtime-dependencies' as const };
+  const runtime = { python: '3.13.5', executable: python, platform: 'synthetic-platform', voices_version: '0.2.0', source_sha256: sha256('source'), source_scope: 'installed-python-source-at-observation' as const, packages: { voices: '0.2.0', mlx: 'synthetic' }, package_scope: 'selected-runtime-dependencies' as const, compute: null };
   const doctor = { runtime, library: { path: libraryPath }, model_cache: hub, models: { base: AUDIO_MODELS.tts.repository, aligner: AUDIO_MODELS.aligner.repository, stt: AUDIO_MODELS.asr.repository }, model_revisions: { base: AUDIO_MODELS.tts.revision, aligner: AUDIO_MODELS.aligner.revision, stt: AUDIO_MODELS.asr.revision } };
   const voicesExecutable = await executable('voices', doctor);
   const provision: CurrentAudioProvision = { schemaVersion: 3, voicesExecutable, runtime, hubCacheDirectory: hub, cacheDirectory: join(root, 'state/audio/cache'),
@@ -97,11 +97,34 @@ test('apply revalidates runtime/assets and selects once without changing the can
   assert.equal(applied.status, 'applied'); assert.equal(applied.changed, true);
   assert.deepEqual(JSON.parse(await readFile(prepared.targets.toolchain, 'utf8')), { schemaVersion: 1, tools: f.input.tools });
   assert.deepEqual(JSON.parse(await readFile(prepared.targets.audio, 'utf8')), f.provision);
+  assert.equal(JSON.parse(await readFile(prepared.targets.audio, 'utf8')).runtime.compute, null);
   assert.equal(await readFile(f.input.candidatePath, 'utf8'), before);
   assert.equal((await f.apply(prepared.candidateSha256)).changed, false);
   const report = await setupInspect({}, f.dependencies);
   assert.equal(report.status, 'ready'); assert.equal(report.audio.defaultVoiceId, 'studio-reader'); assert.equal(report.pending, null);
   await assert.rejects(lstat(setupPendingPath()), { code: 'ENOENT' });
+});
+
+test('supported prepare/apply deliberately replaces historical compute absence without rewriting prior bytes', async t => {
+  const f = await fixture(t);
+  delete f.provision.runtime.compute;
+  await f.executable('voices', f.doctor);
+  const historical = await f.prepare(); await f.apply(historical.candidateSha256);
+  const selectedBefore = await readFile(historical.targets.audio, 'utf8');
+  const candidateBefore = await readFile(f.input.candidatePath, 'utf8'), historicalCandidatePath = f.input.candidatePath;
+  assert.equal(Object.hasOwn(JSON.parse(selectedBefore).runtime, 'compute'), false);
+  f.provision.runtime.compute = null;
+  await f.executable('voices', f.doctor);
+  const drift = await setupInspect({}, f.dependencies);
+  assert.equal(drift.audio.status, 'runtime-drift'); assert.deepEqual(drift.audio.mismatchKeys, ['compute']);
+  f.input.candidatePath = join(f.root, 'explicit-local-candidate.json');
+  const prepared = await f.prepare();
+  assert.equal(await readFile(historical.targets.audio, 'utf8'), selectedBefore, 'preparation does not select or normalize history');
+  assert.equal(JSON.parse(await readFile(f.input.candidatePath, 'utf8')).audio.runtime.compute, null);
+  await f.apply(prepared.candidateSha256);
+  assert.equal(JSON.parse(await readFile(prepared.targets.audio, 'utf8')).runtime.compute, null);
+  assert.equal(await readFile(historicalCandidatePath, 'utf8'), candidateBefore);
+  assert.equal((await setupInspect({}, f.dependencies)).status, 'ready');
 });
 
 test('stable prerequisite paths survive replacement while inspect and apply detect changed executable bytes', async t => {

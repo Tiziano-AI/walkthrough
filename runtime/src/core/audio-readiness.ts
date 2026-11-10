@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { audioEnvironment, readAudioProvision, stableJson, validateAudioProvision, provisionVoices, defaultVoiceId } from '../audio/provision.ts';
 import { runtimePaths } from './runtime-paths.ts';
 
-const runtimeKeys = ['python', 'executable', 'platform', 'voices_version', 'source_sha256', 'source_scope', 'packages', 'package_scope'] as const;
+const runtimeKeys = ['python', 'executable', 'platform', 'voices_version', 'source_sha256', 'source_scope', 'packages', 'package_scope', 'compute'] as const;
 type RuntimeKey = typeof runtimeKeys[number];
 type UnavailableReason = 'command-failed' | 'timeout' | 'output-limit' | 'aborted' | 'invalid-response' | 'toolchain-invalid';
 
@@ -68,7 +68,8 @@ export async function inspectAudioReadiness(
     // accepting arbitrary output keys as diagnostic labels.
     const observed = validateAudioProvision({ ...manifest, runtime }).runtime;
     if (stableJson(observed) !== stableJson(manifest.runtime)) return report('runtime-drift', {
-      mismatchKeys: runtimeKeys.filter(key => stableJson(observed[key]) !== stableJson(manifest.runtime[key])),
+      mismatchKeys: runtimeKeys.filter(key => Object.hasOwn(observed, key) !== Object.hasOwn(manifest.runtime, key)
+        || (Object.hasOwn(observed, key) && stableJson(observed[key]) !== stableJson(manifest.runtime[key]))),
     });
     return { ...report(manifest.schemaVersion === 3 ? 'provisioned' : 'legacy-provision'), voices: provisionVoices(manifest).map(voice => voice.id),
       defaultVoiceId: defaultVoiceId(manifest), languages: ['English', 'Italian'], transcriptionProvisioned: manifest.schemaVersion === 3 };

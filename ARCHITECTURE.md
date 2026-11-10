@@ -193,6 +193,14 @@ ASR have separate cache keys and receipts. The saved default narrator belongs
 to the operator. New edits select English or Italian; historical missing
 language retains English meaning without rewriting its bytes.
 
+Audio admits only local Voices runtime provenance. An explicit `compute: null`
+is retained in synthesis, alignment and ASR identities; historical omission
+stays omitted with its original hashes. Presence changes are runtime drift
+requiring reviewed setup, not normalization. Non-null compute and remote source
+provenance are rejected for both fresh work and retained offline products.
+Retained artifact comparison may ignore only the original executable locator,
+not its runtime provenance.
+
 Explicit `--reuse-audio` verifies compatible retained text, voice/language,
 WAV, alignment and their original provenance. A crop or caption change does
 not require speech generation. Valid retained media must remain reusable when

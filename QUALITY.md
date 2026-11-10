@@ -10,6 +10,29 @@ This document defines acceptance. It does not declare that every supported
 journey or quality gate has passed. A release's recorded observations must name
 the actual host, installed artifact, source and result tested.
 
+## 0.4.4 local audio runtime contract
+
+The candidate accepts Voices' explicitly local `compute: null` runtime field,
+which is emitted by both 0.2.2 and 0.3.0. Historical absence remains absent with
+the exact original synthesis, alignment and ASR hashes. Presence changes are
+reported as runtime drift rather than silently normalizing existing setup.
+Fresh and retained comparisons validate both runtime identities; retained
+comparison relaxes only the executable locator. Non-null compute, remote source
+provenance and unexpected keys remain invalid, including forged aggregate
+narration receipts with otherwise local phrases.
+
+Observed source qualification on 10 November 2026 used macOS arm64 and Node
+24.22.2. TypeScript checking passed. The canonical serial suite passed 745
+tests with no failures and its two default opt-in headed tests skipped; the
+final affected audio, readiness, setup and film-storage gate passed all 163
+tests without skips. These include deliberate historical-absence to
+explicit-null setup prepare/apply, separate synthesis/alignment/ASR caches,
+interrupted-stage adoption, offline reuse and retained-only compaction. The
+original installed 0.2.2 and qualified 0.3.0 doctor runtime bodies pass the
+consumer schema without rewriting either original or the selected provision.
+No Voices inference or model loading was performed. Actual speech quality,
+live setup selection and installation are separate qualifications.
+
 ## 0.4.3 launcher compatibility correction
 
 Version 0.4.2 added Chromium's internal sandbox independently of its browser

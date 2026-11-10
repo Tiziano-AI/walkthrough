@@ -88,6 +88,7 @@ async function retainedAudio(directory: unknown, manifest: AudioProvision, voice
   const provisionPath = await containedFile(root, join(root, 'provision.json'));
   if (await digestFile(provisionPath) !== narration.provisionManifestSha256) throw new Error('AUDIO_RETAINED_PROVENANCE_MISMATCH');
   const provision = validateAudioProvision(await json(provisionPath));
+  verifyRuntime(narration.runtime, provision);
   if (narration.schemaVersion !== 1 || !Array.isArray(narration.beats)) throw new Error('AUDIO_RETAINED_PROVENANCE_MISMATCH');
   const matching = narration.voiceId === voiceId && audioLanguage(narration.language) === language;
   return { root, narration, provision, matching, currentVoice: resolveProvisionVoice(manifest, voiceId) };

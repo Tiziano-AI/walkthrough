@@ -51,6 +51,8 @@ if(control.mode===command+'-fail'&&command!=='render'){
 }
 const runtime=structuredClone(manifest.runtime);
 if(control.mode===command+'-runtime')runtime.voices_version='unexpected-version';
+if(control.mode===command+'-remote-compute')runtime.compute={backend:'dgx'};
+if(control.mode===command+'-remote-source')runtime.source_scope='remote-python-source-at-observation';
 if(command==='doctor'){
  if(control.mode.startsWith('final-')){
   const calls=(await fs.readFile(path.join(root,'calls.jsonl'),'utf8')).trim().split('\\n').map(JSON.parse);
@@ -144,7 +146,7 @@ async function fixture(mode = 'normal', port = 9) {
   await fs.writeFile(voicesExecutable, source, { mode: 0o700 });
   const manifest: AudioProvision = {
     schemaVersion: 3, voicesExecutable, hubCacheDirectory, cacheDirectory,
-    runtime: { python: 'synthetic-no-python', executable: process.execPath, platform: 'synthetic-test', voices_version: 'synthetic-test', source_sha256: digest(source), source_scope: 'installed-python-source-at-observation', packages: { synthetic: '1' }, package_scope: 'selected-runtime-dependencies' },
+    runtime: { python: 'synthetic-no-python', executable: process.execPath, platform: 'synthetic-test', voices_version: 'synthetic-test', source_sha256: digest(source), source_scope: 'installed-python-source-at-observation', packages: { synthetic: '1' }, package_scope: 'selected-runtime-dependencies', compute: null },
     models, defaultVoiceId: voiceId, voices: [{ id: voiceId, libraryPath, files: voiceFiles }],
   };
   const manifestPath = path.join(directory, 'provision.json');
@@ -191,6 +193,7 @@ test('sandboxed audio worker uses explicit public CLI revisions and canonical te
     assert.equal(produced.beats[0].metrics.wordsPerMinute, 120);
     assert.equal(produced.spokenContentVerified, false);
     assert.equal(produced.humanListeningRequired, true);
+    assert.equal(produced.runtime.compute, null);
     assert.deepEqual(produced.beats[0].captions.map((cue:any)=>cue.text),["Let's preserve the exact canonical words,",'punctuation, and timing.']);
     assert.equal(produced.beats[0].captions.map((cue:any)=>cue.text).join(' '),canonicalText);
     assert.match(await fs.readFile(produced.vttPath, 'utf8'), /Let's preserve the exact canonical words,/);
@@ -250,6 +253,9 @@ test('independent phrase identities and more than twenty phrases reuse exact can
 });
 
 const rejectedReceipts = [
+  ...(['doctor', 'render', 'align', 'transcribe'] as const).flatMap(stage => [
+    [`${stage}-remote-compute`, 'AUDIO_RUNTIME_IDENTITY_DRIFT'], [`${stage}-remote-source`, 'AUDIO_RUNTIME_IDENTITY_DRIFT'],
+  ] as const),
   ['doctor-runtime', 'AUDIO_RUNTIME_IDENTITY_DRIFT'], ['render-runtime', 'AUDIO_RUNTIME_IDENTITY_DRIFT'],
   ['render-model', 'AUDIO_GENERATION_PROVENANCE_MISMATCH'], ['render-text', 'AUDIO_GENERATION_PROVENANCE_MISMATCH'],
   ['render-reference', 'AUDIO_GENERATION_PROVENANCE_MISMATCH'], ['sidecar-mismatch', 'AUDIO_GENERATION_PROVENANCE_MISMATCH'],
@@ -439,6 +445,23 @@ test('historical English audio without language fields reuses without changing r
   assert.equal(output.language, 'English'); assert.equal(output.beats[0].synthesisIdentity, identity); assert.equal(output.beats[0].cacheHit, true);
   assert.deepEqual(await fs.readFile(narrationPath), historicalBytes);
   assert.deepEqual((await f.calls()).map(call => call.command), ['doctor', 'render', 'align', 'transcribe', 'doctor', 'doctor', 'doctor']);
+});
+
+test('both retained readers reject forged aggregate runtime provenance before reusing local phrases',async t=>{
+  const f=await fixture();t.after(()=>fs.rm(f.directory,{recursive:true,force:true}));
+  const first=await f.request('source');assert.equal((await f.run(first.requestPath)).code,0);
+  const narrationPath=path.join(first.outputDirectory,'narration.json'),original=await fs.readFile(narrationPath,'utf8');
+  for(const [name,mutate] of [
+    ['remote-compute',(runtime:any)=>{runtime.compute={backend:'dgx'};}],
+    ['remote-source',(runtime:any)=>{runtime.source_scope='remote-python-source-at-observation';}],
+    ['compute-omitted',(runtime:any)=>{delete runtime.compute;}],
+  ] as const){
+    const narration=JSON.parse(original);mutate(narration.runtime);await fs.writeFile(narrationPath,JSON.stringify(narration));
+    await assert.rejects(inspectRetainedNarration({directory:first.outputDirectory,beats:[{id:'intro',text:canonicalText}],voiceId:f.manifest.defaultVoiceId}),{code:'AUDIO_RUNTIME_IDENTITY_DRIFT'});
+    const next=await f.request(name,[{id:'reused',text:canonicalText}],{reuseAudioDirectory:first.outputDirectory});
+    assert.equal((await f.run(next.requestPath)).last.code,'AUDIO_RUNTIME_IDENTITY_DRIFT');
+  }
+  assert.equal((await f.calls()).filter(call=>call.command==='render').length,1,'forged provenance never triggers replacement speech');
 });
 
 test('complete explicit reuse needs no selected provision, Voices executable, voice library or model cache',async t=>{

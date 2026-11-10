@@ -80,6 +80,38 @@ test('schema3 binds the operator-selected provisioned default and separate langu
   assert.notEqual(transcriptionIdentity(manifest, 'English'), transcriptionIdentity(manifest, 'Italian'));
 });
 
+test('explicit local compute is preserved, historical hashes stay exact and remote provenance is rejected', () => {
+  const historical = fixture('/synthetic'), current = currentFixture('/synthetic');
+  // Characterized before adding compute support; retained bytes cannot be relabelled.
+  assert.equal(synthesisIdentity(historical), 'c52d721d16031cf5555fb3f4ccd3342f84684e90f9eb398c38ecb3a4f5ab6267');
+  assert.equal(synthesisIdentity(current), 'cd4b8f9f4ae2d03a0b27e18437fcbd199dd13e2802339ab98de31f849c5c644a');
+  assert.equal(alignmentIdentity(historical), 'ba9e4da7c3a1417fd7a010774c1e5e015b157b157265b3ad0bbb34cf91b57239');
+  assert.equal(transcriptionIdentity(current, 'English'), 'e37a433bb194f18403c6897cde08e9e87cff4eae39ff9c72f7c27dd6c7a4e1a6');
+  for (const original of [historical, current]) {
+    const before = JSON.stringify(original), local = structuredClone(original); local.runtime.compute = null;
+    assert.equal(validateAudioProvision(local), local);
+    assert.equal(Object.hasOwn(validateAudioProvision(original).runtime, 'compute'), false);
+    assert.equal(JSON.stringify(original), before);
+    assert.notEqual(synthesisIdentity(local), synthesisIdentity(original));
+    assert.notEqual(alignmentIdentity(local), alignmentIdentity(original));
+    if (local.schemaVersion === 3) assert.notEqual(transcriptionIdentity(local, 'English'), transcriptionIdentity(current, 'English'));
+    for (const change of [
+      (m: any) => { m.runtime.compute = undefined; },
+      (m: any) => { m.runtime.compute = { backend: 'dgx' }; },
+      (m: any) => { m.runtime.compute = 'local'; },
+      (m: any) => { m.runtime.compute = false; },
+      (m: any) => { m.runtime.source_scope = 'remote-python-source-at-observation'; },
+      (m: any) => { m.runtime.unexpected = null; },
+    ]) {
+      const invalid = structuredClone(local); change(invalid);
+      assert.throws(() => validateAudioProvision(invalid), /AUDIO_PROVISION_SCHEMA/);
+      assert.throws(() => synthesisIdentity(invalid), /AUDIO_PROVISION_SCHEMA/);
+      assert.throws(() => alignmentIdentity(invalid), /AUDIO_PROVISION_SCHEMA/);
+      if (invalid.schemaVersion === 3) assert.throws(() => transcriptionIdentity(invalid, 'English'), /AUDIO_PROVISION_SCHEMA/);
+    }
+  }
+});
+
 test('read checks presence and sizes; verification checks voice/model bytes and exact inventory', async t => {
   const root = await mkdtemp(join(tmpdir(), 'walkthrough-audio-provision-')); t.after(() => rm(root, { recursive: true, force: true }));
   const manifest = fixture(root); await materialize(manifest);
@@ -139,6 +171,7 @@ test('production environment inherits no credential, proxy, injection or provide
 
 test('candidate mapping uses public doctor keys and rejects wrong revisions, cache and canonical weights', () => {
   const manifest = currentFixture('/synthetic');
+  manifest.runtime.compute = null;
   manifest.models.tts.files = [{ path: 'model.safetensors', size: 1, sha256: '81fb76175ff74e69be25fef2cc3e54f016df3034f1514c8e1c89da06a3510cff' }, { path: 'speech_tokenizer/model.safetensors', size: 1, sha256: '836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258' }];
   manifest.models.aligner.files[0].sha256 = '9d0728e17e28ee122c366bfaa9748ccbbb8fc3df4c0ce09dd8a5eac8202989e8';
   const doctor = { runtime: manifest.runtime, library: { path: manifest.voices[0].libraryPath }, model_cache: manifest.hubCacheDirectory, models: { base: AUDIO_MODELS.tts.repository, aligner: AUDIO_MODELS.aligner.repository, stt: AUDIO_MODELS.asr.repository }, model_revisions: { base: AUDIO_MODELS.tts.revision, aligner: AUDIO_MODELS.aligner.revision, stt: AUDIO_MODELS.asr.revision } };

@@ -38,7 +38,7 @@ function historicalProvision(voiceId:string):HistoricalAudioProvision{
 function currentProvision(voiceId:string):CurrentAudioProvision{
   const {voice,models,...base}=historicalProvision(voiceId);
   const asr={...structuredClone(models.aligner),...AUDIO_MODELS.asr,snapshotPath:join(base.hubCacheDirectory,`models--${AUDIO_MODELS.asr.repository.replaceAll('/','--')}`,'snapshots',AUDIO_MODELS.asr.revision)};
-  return {...base,schemaVersion:3,runtime:{...base.runtime,voices_version:'2.0.0',source_sha256:'1'.repeat(64)},defaultVoiceId:'copilot-female-1',voices:voiceId==='copilot-female-1'?[voice]:[{...voice,id:'copilot-female-1'},voice],models:{...models,asr}};
+  return {...base,schemaVersion:3,runtime:{...base.runtime,voices_version:'2.0.0',source_sha256:'1'.repeat(64),compute:null},defaultVoiceId:'copilot-female-1',voices:voiceId==='copilot-female-1'?[voice]:[{...voice,id:'copilot-female-1'},voice],models:{...models,asr}};
 }
 
 async function fixture(t:{after:(fn:()=>Promise<void>)=>void},options:{current?:boolean;language?:AudioLanguage;voiceId?:string;reuseHistorical?:boolean;transcript?:string;preview?:boolean}={}){
@@ -315,6 +315,25 @@ test('reused historical speech keeps its original generation while current provi
   for(const [relative,bytes] of Object.entries(f.removable))assert.equal(await readFile(join(f.directory,relative),'utf8'),bytes);
   assert.equal((await f.compact()).status,'compacted');
   for(const [relative,bytes] of Object.entries(f.audioFiles))assert.deepEqual(await readFile(join(f.directory,relative)),bytes);
+});
+
+test('offline compaction rejects remote compute and source provenance in every retained stage',async t=>{
+  const f=await fixture(t,{current:true});
+  for(const stage of ['synthesis','alignment','transcription']){
+    const relative=`audio/phrase/${stage}.json`,original=f.audioFiles[relative];
+    for(const mutate of [
+      (runtime:any)=>{runtime.compute={backend:'dgx'};},
+      (runtime:any)=>{runtime.source_scope='remote-python-source-at-observation';},
+      (runtime:any)=>{delete runtime.compute;},
+    ]){
+      const value=JSON.parse(original.toString('utf8'));mutate((value.artifact??value.provider).runtime);
+      await writeFile(join(f.directory,relative),JSON.stringify(value));
+      await assert.rejects(f.compact(),/FILM_COMPACT_AUDIO_UNVERIFIED/);
+      for(const [path,bytes] of Object.entries(f.removable))assert.equal(await readFile(join(f.directory,path),'utf8'),bytes);
+      await writeFile(join(f.directory,relative),original);
+    }
+  }
+  assert.equal((await f.compact()).status,'compacted');
 });
 
 test('current ASR receipts are required and their language, audio and comparison cannot drift',async t=>{
