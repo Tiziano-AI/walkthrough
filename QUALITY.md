@@ -23,15 +23,28 @@ narration receipts with otherwise local phrases.
 
 Observed source qualification on 10 November 2026 used macOS arm64 and Node
 24.22.2. TypeScript checking passed. The canonical serial suite passed 745
-tests with no failures and its two default opt-in headed tests skipped; the
-final affected audio, readiness, setup and film-storage gate passed all 163
-tests without skips. These include deliberate historical-absence to
-explicit-null setup prepare/apply, separate synthesis/alignment/ASR caches,
+tests with no failures and its two default opt-in headed tests skipped. After
+the final aggregate-receipt reader edits, the affected audio, readiness, setup
+and film-storage gate passed all 163 tests without skips. These include
+deliberate historical-absence to explicit-null setup prepare/apply, separate synthesis/alignment/ASR caches,
 interrupted-stage adoption, offline reuse and retained-only compaction. The
 original installed 0.2.2 and qualified 0.3.0 doctor runtime bodies pass the
 consumer schema without rewriting either original or the selected provision.
 No Voices inference or model loading was performed. Actual speech quality,
 live setup selection and installation are separate qualifications.
+
+The bootstrap packaging rehearsal was built from commit `d213afc`; its
+`walkthrough-0.4.4-darwin-arm64.tar.gz` archive SHA-256 is
+`f2a3395e6f3d5fd4f22623d1aee18dad556e1ab200d1142922b12ff93979ecdd`.
+Checks against the extracted archive passed both original doctor runtime
+bodies through provision and fresh-runtime validation, retained synthesis,
+alignment and transcription validation, distinct absent/null identities and
+remote-provenance rejection. Its independent launcher returned version 0.4.4
+and help; the saved user provision remained byte-identical. This qualifies
+packaged runtime contracts and the metadata launcher, not dependency
+preparation, installation, speech generation or live setup adoption. The
+approval candidate must be built from the committed qualification record and
+checked again after extraction; the rehearsal archive is not that candidate.
 
 ## 0.4.3 launcher compatibility correction
 
